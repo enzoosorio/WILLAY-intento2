@@ -1,0 +1,83 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Helpers ──────────────────────────────────────────────────────────────
+
+    function isAuth() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isAuth() && request.auth.uid == uid;
+    }
+
+    function isOperator() {
+      return isAuth() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'operator';
+    }
+
+    // ── users ─────────────────────────────────────────────────────────────────
+    // Lectura: propio o operador.
+    // Escritura: solo el propietario, sin poder cambiar su propio rol.
+    match /users/{uid} {
+      allow read:   if isOwner(uid) || isOperator();
+      allow create: if isOwner(uid);
+      allow update: if isOwner(uid) &&
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']);
+    }
+
+    // ── reports ───────────────────────────────────────────────────────────────
+    // Crear: cualquier auth; el cliente NO puede escribir priority/status.
+    // Actualizar estado: solo operador (via callable markReportStatus → admin SDK).
+    // Leer: cualquier auth (para mapa comunitario y bandeja operador).
+    match /reports/{reportId} {
+      allow read:   if isAuth();
+      // El cliente puede inicializar status="received" y attendedBy=null pero
+      // NO escribir priority/priorityReason (eso es exclusivo de Cloud Functions).
+      // Esto simplifica el query del operador (necesita un status concreto desde
+      // el momento de creación) y mantiene la barrera real donde importa.
+      allow create: if isAuth() &&
+        request.resource.data.authorUid == request.auth.uid &&
+        !request.resource.data.keys().hasAny(['priority', 'priorityReason']) &&
+        request.resource.data.status == 'received' &&
+        request.resource.data.attendedBy == null;
+      allow update: if isOperator();
+      // Las Cloud Functions usan Admin SDK y omiten estas reglas.
+    }
+
+    // ── missing_persons ───────────────────────────────────────────────────────
+    // Leer: cualquier auth (para comparación facial en cliente).
+    // Crear/actualizar: solo el registrant.
+    match /missing_persons/{personId} {
+      allow read:   if isAuth();
+      allow create: if isAuth() &&
+        request.resource.data.registrantUid == request.auth.uid;
+      allow update: if isAuth() &&
+        resource.data.registrantUid == request.auth.uid;
+      allow delete: if false; // solo se marca active=false
+    }
+
+    // ── sightings ─────────────────────────────────────────────────────────────
+    // Leer: el reportante O el registrant de la ficha matched.
+    // Crear: cualquier auth (cliente sube sighting tras match local).
+    match /sightings/{sightingId} {
+      allow read: if isAuth() && (
+        resource.data.reporterUid == request.auth.uid ||
+        (resource.data.matchedMissingId != null &&
+          get(/databases/$(database)/documents/missing_persons/$(resource.data.matchedMissingId))
+            .data.registrantUid == request.auth.uid)
+      );
+      allow create: if isAuth() &&
+        request.resource.data.reporterUid == request.auth.uid;
+      allow delete: if false; // solo Cloud Function cleanup
+    }
+
+    // ── notifications ─────────────────────────────────────────────────────────
+    // Solo el destinatario puede leer. Escritura solo via Cloud Function (admin SDK).
+    match /notifications/{notifId} {
+      allow read:            if isAuth() && resource.data.recipientUid == request.auth.uid;
+      allow create, update:  if false;
+    }
+  }
+}

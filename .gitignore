@@ -1,0 +1,33 @@
+# ── Firebase ──────────────────────────────────────────────────────────────────
+.firebase/
+firebase-debug.log
+firestore-debug.log
+functions-debug.log
+ui-debug.log
+storage-debug.log
+.runtimeconfig.json
+
+# ── Python (functions) ────────────────────────────────────────────────────────
+functions/venv/
+functions/.venv/
+functions/__pycache__/
+functions/**/__pycache__/
+functions/*.pyc
+functions/**/*.pyc
+functions/.env
+
+# ── Secretos — NUNCA commitear ────────────────────────────────────────────────
+*.env
+.env.*
+!.env.example
+google-services.json
+GoogleService-Info.plist
+
+# ── OS ────────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── IDE ───────────────────────────────────────────────────────────────────────
+.idea/
+*.iml

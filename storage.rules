@@ -1,0 +1,29 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isAuth() {
+      return request.auth != null;
+    }
+
+    // Fotos de fichas de personas desaparecidas.
+    // Nota: {fileName} captura el segmento completo (ej. "abc123.jpg").
+    // No se puede poner la extensión en la regla de path — Storage solo
+    // admite wildcards de segmento completo.
+    match /missing/{fileName} {
+      allow read:  if isAuth();
+      allow write: if isAuth()
+        && request.resource.size < 5 * 1024 * 1024   // máx 5 MB
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    // Fotos de avistamientos (TTL 24h, borradas por Cloud Function).
+    match /sightings/{fileName} {
+      allow read:   if isAuth();
+      allow write:  if isAuth()
+        && request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+      allow delete: if false; // solo Cloud Function cleanup
+    }
+  }
+}
