@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Pressable, StyleSheet, Switch, Text, View, Alert } from "react-native";
 import { setDoc, serverTimestamp } from "firebase/firestore";
+import { router } from "expo-router";
 
 import { Screen } from "@/components/ui/Screen";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
@@ -17,18 +18,18 @@ export default function Onboarding() {
   const [consentBiometric, setConsentBiometric] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const canSubmit = !!zone && consentLocation; // biometric es opcional
+  const isAnonymous = user?.isAnonymous ?? false;
+  // Invitados pueden continuar sin seleccionar zona ni consentimientos
+  const canSubmit = isAnonymous ? true : !!zone && consentLocation;
 
   async function submit() {
-    if (!user || !zone) return;
+    if (!user) return;
     setSaving(true);
     try {
-      // setDoc + merge: si el doc todavía no fue creado por ensureUserDoc
-      // (race posible), igual queda consistente.
       await setDoc(
         userDoc(user.uid),
         {
-          zone,
+          zone: zone ?? "otro",
           consentLocation,
           consentBiometric,
           onboardingDone: true,
@@ -38,6 +39,29 @@ export default function Onboarding() {
       );
     } catch (e) {
       Alert.alert("Error", (e as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function skipAsGuest() {
+    if (!user) return;
+    setSaving(true);
+    try {
+      await setDoc(
+        userDoc(user.uid),
+        {
+          zone: "otro",
+          consentLocation: false,
+          consentBiometric: false,
+          onboardingDone: true,
+          updatedAt: serverTimestamp(),
+        } as never,
+        { merge: true },
+      );
+    } catch (e) {
+      // Si Firestore falla igual dejamos pasar al invitado
+      router.replace("/(tabs)");
     } finally {
       setSaving(false);
     }
@@ -89,9 +113,20 @@ export default function Onboarding() {
       <PrimaryButton
         title="Continuar"
         loading={saving}
-        disabled={!canSubmit}
+        disabled={!canSubmit || saving}
         onPress={submit}
       />
+
+      {/* Solo visible para usuarios anónimos/invitados */}
+      {isAnonymous && (
+        <PrimaryButton
+          title="Saltar → Entrar como invitado"
+          variant="ghost"
+          loading={saving}
+          onPress={skipAsGuest}
+          style={{ marginTop: 4 }}
+        />
+      )}
     </Screen>
   );
 }

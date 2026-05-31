@@ -1,6 +1,3 @@
-// Capa dinámica encima de app.json: resuelve $VAR contra process.env (vía dotenv)
-// y mantiene los demás campos sin tocar. Permite versionar app.json + .env.example
-// sin commitear secretos en .env.
 import "dotenv/config";
 import type { ExpoConfig } from "expo/config";
 
@@ -20,6 +17,29 @@ function resolve(value: unknown): unknown {
 export default ({ config }: { config: ExpoConfig }): ExpoConfig => {
   const merged: ExpoConfig = {
     ...config,
+    // Plugins necesarios para Firebase y Google Auth
+    plugins: [
+      "expo-router",
+      "expo-secure-store",
+      "expo-asset",
+      "@react-native-google-signin/google-signin",
+      [
+        "@react-native-firebase/app",
+        {
+          "android": "./google-services.json",
+          "ios": "./GoogleService-Info.plist"
+        }
+      ],
+      "@react-native-firebase/auth",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "extraMavenRepos": ["https://maven.google.com"]
+          }
+        }
+      ]
+    ],
     extra: resolve({
       ...(config.extra ?? {}),
       firebase: {
@@ -31,9 +51,8 @@ export default ({ config }: { config: ExpoConfig }): ExpoConfig => {
         appId: "$FIREBASE_APP_ID",
       },
       googleAuth: {
-        webClientId: "$GOOGLE_WEB_CLIENT_ID",
-        iosClientId: "$GOOGLE_IOS_CLIENT_ID",
-        androidClientId: "$GOOGLE_ANDROID_CLIENT_ID",
+        webClientId: "$EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID",
+        androidClientId: "$EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID",
       },
       region: "southamerica-east1",
       useEmulators: "$USE_EMULATORS",

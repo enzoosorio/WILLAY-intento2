@@ -11,6 +11,7 @@ export default function AuthLayout() {
       }}
     >
       <Stack.Screen name="sign-in" options={{ headerShown: false }} />
+      <Stack.Screen name="role-select" options={{ headerShown: false }} />
       <Stack.Screen name="onboarding" options={{ title: "Bienvenido a Willay" }} />
     </Stack>
   );

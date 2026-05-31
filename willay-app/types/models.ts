@@ -1,4 +1,3 @@
-// Espejo de crafting/04-data-model.md. Fuente de verdad para tipos del cliente.
 import type { Timestamp, GeoPoint } from "firebase/firestore";
 
 export type Zone = "zapallal" | "la_ensenada" | "huamantanga" | "centro" | "otros";
@@ -6,6 +5,20 @@ export type Role = "citizen" | "operator";
 
 export type Priority = "P1" | "P2" | "P3";
 export type ReportType = "panic" | "text";
+
+// ── Tipos de incidente seleccionables por el vecino ──
+export type IncidentType =
+  | "robo"
+  | "asalto"
+  | "violencia_familiar"
+  | "accidente"
+  | "persona_sospechosa"
+  | "vandalismo"
+  | "otro";
+
+// ── NUEVO: categoría de ficha (persona perdida vs buscada/delincuente) ──
+export type PersonCategory = "perdida" | "buscada";
+
 export type ReportStatus = "received" | "attending" | "closed" | "dismissed";
 export type NotificationKind = "report_status" | "nearby_p1" | "missing_match";
 
@@ -27,6 +40,8 @@ export interface ReportDoc {
   authorUid: string;
   type: ReportType;
   text?: string;
+  incidentType?: IncidentType;
+  photoUrl?: string;
   location: GeoPoint;
   geohash: string;
   priority?: Priority;
@@ -42,6 +57,7 @@ export interface MissingPersonDoc {
   name: string;
   age: number;
   description: string;
+  category?: PersonCategory; // ← NUEVO: "perdida" o "buscada"
   lastSeenZone: Zone;
   lastSeenLocation?: GeoPoint;
   lastSeenGeohash: string;

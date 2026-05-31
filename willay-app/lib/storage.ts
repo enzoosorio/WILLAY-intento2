@@ -1,5 +1,9 @@
-// Helpers para subir blobs a Cloud Storage. Útil tanto para fichas como
-// para avistamientos con match.
+// Helpers para subir blobs a Cloud Storage. Útil para fichas, avistamientos
+// y reportes con foto.
+//
+// Método: fetch(uri) + .blob() + uploadBytes. Este es el método que YA
+// funcionaba en este proyecto (las fotos subían bien a Firebase Storage).
+
 import { getDownloadURL, ref as storageRef, uploadBytes } from "firebase/storage";
 import { getFirebaseStorage } from "./firebase";
 
@@ -17,6 +21,13 @@ export async function uploadMissingPhoto(personId: string, imageUri: string): Pr
 
 export async function uploadSightingPhoto(sightingId: string, imageUri: string): Promise<string> {
   const ref = storageRef(getFirebaseStorage(), `sightings/${sightingId}.jpg`);
+  const blob = await uriToBlob(imageUri);
+  await uploadBytes(ref, blob, { contentType: "image/jpeg" });
+  return await getDownloadURL(ref);
+}
+
+export async function uploadReportPhoto(reportId: string, imageUri: string): Promise<string> {
+  const ref = storageRef(getFirebaseStorage(), `reports/${reportId}.jpg`);
   const blob = await uriToBlob(imageUri);
   await uploadBytes(ref, blob, { contentType: "image/jpeg" });
   return await getDownloadURL(ref);

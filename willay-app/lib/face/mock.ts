@@ -1,80 +1,60 @@
-// MockEmbedder — "embedding" basado en perceptual hash + estadísticas simples.
+// MockEmbedder — "embedding" demostrativo basado en el CONTENIDO de la imagen.
 //
-// NO es reconocimiento facial real. Sirve para:
-//  - Demostrar el flujo completo (cámara → embedding → match → notificación).
-//  - Iterar UI sin depender de TFLite/dev-build.
-//  - "Calidad demostrativa, no policial" — coincide con la narrativa del MVP.
+// NO es reconocimiento facial real. Pero a diferencia de la versión por-URI,
+// esta lee el contenido real del archivo (base64) y genera el vector de ahí,
+// así la MISMA foto produce SIEMPRE el mismo embedding aunque su URI cambie
+// entre selecciones (Expo copia las imágenes de galería a rutas temporales
+// distintas cada vez).
 //
-// Estrategia: redimensiona a 8×8 grayscale (=64 valores), normaliza por la
-// media, y devuelve el vector. Dos fotos parecidas devolverán cosenos altos.
+// Para reconocimiento REAL se reemplaza por FacenetEmbedder (USE_FACENET=true)
+// en un development build con el modelo entrenado.
 
-import * as ImageManipulator from "expo-image-manipulator";
+import * as FileSystem from "expo-file-system/legacy";
 import type { FaceEmbedder } from "./types";
 
-const SIZE = 8;
-const DIM = SIZE * SIZE;
+const DIM = 64;
 
-async function fetchPixels(uri: string): Promise<number[]> {
-  // Reducimos la imagen a 8x8 PNG. Luego leemos pixeles con un truco
-  // canvas-en-web vs fetch-base64-en-RN para mantenerlo portable.
-  const out = await ImageManipulator.manipulateAsync(
-    uri,
-    [{ resize: { width: SIZE, height: SIZE } }],
-    { compress: 1, format: ImageManipulator.SaveFormat.PNG, base64: true },
-  );
-  if (!out.base64) throw new Error("ImageManipulator no devolvió base64");
-
-  // Decodificamos PNG mínimamente: usamos atob + parser super simplificado.
-  // Para MVP nos basta con un fingerprint razonable, no con pixeles exactos.
-  // Truco: hash las bytes del PNG en buckets de DIM y usá eso como vector.
-  const bytes = base64ToBytes(out.base64);
-  const buckets = new Array<number>(DIM).fill(0);
-  for (let i = 0; i < bytes.length; i++) {
-    const b = bytes[i] ?? 0;
-    const idx = i % DIM;
-    buckets[idx] = (buckets[idx] ?? 0) + b;
+// Lee el archivo como base64 (contenido real de la imagen).
+async function readBase64(uri: string): Promise<string> {
+  try {
+    return await FileSystem.readAsStringAsync(uri, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+  } catch {
+    // Si no se puede leer, devolvemos la URI como último recurso.
+    return uri;
   }
-  // Normalización L2.
+}
+
+// Genera un vector determinístico de DIM valores a partir del contenido.
+// Usamos un hash rodante por posición para que imágenes DISTINTAS produzcan
+// vectores claramente distintos (evita falsos positivos), y la MISMA imagen
+// produzca exactamente el mismo vector.
+function buildVector(content: string): number[] {
+  const vec = new Array<number>(DIM).fill(0);
+
+  // Hash acumulativo estilo FNV mezclado con la posición.
+  let h = 2166136261;
+  for (let i = 0; i < content.length; i++) {
+    h ^= content.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+    // Distribuimos la influencia de cada carácter en un cubo distinto.
+    const idx = (h >>> 0) % DIM;
+    vec[idx] += (h >>> 8) & 0xff;
+  }
+
+  // Normalización L2 (necesaria para la similitud de coseno).
   let norm = 0;
-  for (const v of buckets) norm += v * v;
+  for (const v of vec) norm += v * v;
   norm = Math.sqrt(norm) || 1;
-  return buckets.map((v) => v / norm);
-}
-
-function base64ToBytes(b64: string): Uint8Array {
-  // Hermes (RN 0.81) expone atob/btoa globalmente. Si por alguna razón no lo
-  // estuviera, hacemos un decode mínimo manual.
-  if (typeof atob === "function") {
-    const binary = atob(b64);
-    const out = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) out[i] = binary.charCodeAt(i);
-    return out;
-  }
-  return base64DecodeFallback(b64);
-}
-
-const B64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-function base64DecodeFallback(input: string): Uint8Array {
-  const clean = input.replace(/[^A-Za-z0-9+/]/g, "");
-  const len = (clean.length * 3) >> 2;
-  const out = new Uint8Array(len);
-  let p = 0;
-  for (let i = 0; i < clean.length; i += 4) {
-    const c0 = B64.indexOf(clean[i] ?? "A");
-    const c1 = B64.indexOf(clean[i + 1] ?? "A");
-    const c2 = B64.indexOf(clean[i + 2] ?? "A");
-    const c3 = B64.indexOf(clean[i + 3] ?? "A");
-    if (p < len) out[p++] = (c0 << 2) | (c1 >> 4);
-    if (p < len) out[p++] = ((c1 & 0xf) << 4) | (c2 >> 2);
-    if (p < len) out[p++] = ((c2 & 0x3) << 6) | c3;
-  }
-  return out;
+  return vec.map((v) => v / norm);
 }
 
 export const MockEmbedder: FaceEmbedder = {
-  name: "mock-phash-8x8",
+  name: "mock-content-hash",
   dim: DIM,
   async embed(uri: string): Promise<number[]> {
-    return fetchPixels(uri);
+    const content = await readBase64(uri);
+    return buildVector(content);
   },
 };

@@ -1,5 +1,3 @@
-// Layout raíz: bootea Firebase, decide a qué grupo de rutas mandar
-// según el estado de auth + onboarding.
 import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
@@ -12,7 +10,6 @@ import { ensureUserDoc, useAuthUser, useUserDoc } from "@/lib/session";
 import { registerForPushAsync } from "@/lib/push";
 import { colors } from "@/theme/colors";
 
-// Init Firebase + emulator wiring antes que cualquier hijo renderice.
 bootstrapFirebase();
 
 export const unstable_settings = { anchor: "(tabs)" };
@@ -23,31 +20,41 @@ export default function RootLayout() {
   const segments = useSegments();
   const router = useRouter();
 
-  // Crear el doc users/{uid} la primera vez + registrar push token.
   useEffect(() => {
     if (!user) return;
-    ensureUserDoc(user)
-      .then(() => registerForPushAsync(user.uid))
-      .catch((e) => console.warn("[layout] post-login error", e));
+    // Usuarios con cuenta → crear doc + push token
+    // Anónimos ya crean su doc dentro de role-select
+    if (!user.isAnonymous) {
+      ensureUserDoc(user)
+        .then(() => registerForPushAsync(user.uid))
+        .catch((e) => console.warn("[layout] post-login error", e));
+    }
   }, [user]);
 
-  // Auth-gate: redirige según estado.
   useEffect(() => {
     if (authLoading) return;
     if (user && profileLoading) return;
 
     const inAuth = segments[0] === "(auth)";
+    const currentScreen = segments[1];
 
     if (!user) {
       if (!inAuth) router.replace("/(auth)/sign-in");
       return;
     }
-    const needsOnboarding = !profile?.onboardingDone;
-    if (needsOnboarding) {
-      if (segments[1] !== "onboarding") router.replace("/(auth)/onboarding");
+
+    if (!profile?.onboardingDone) {
+      // Anónimos sin onboarding → role-select
+      // Usuarios con cuenta sin onboarding → onboarding normal
+      if (user.isAnonymous) {
+        if (currentScreen !== "role-select") router.replace("/(auth)/role-select");
+      } else {
+        if (currentScreen !== "onboarding") router.replace("/(auth)/onboarding");
+      }
       return;
     }
-    // Logueado y onboard listo → fuera de (auth).
+
+    // Logueado y onboarding listo → fuera de (auth)
     if (inAuth) router.replace("/(tabs)");
   }, [authLoading, profileLoading, user, profile, segments, router]);
 
@@ -75,6 +82,7 @@ export default function RootLayout() {
         <Stack.Screen name="missing/new" options={{ title: "Nueva ficha" }} />
         <Stack.Screen name="missing/scan" options={{ title: "Avistamiento" }} />
         <Stack.Screen name="missing/[id]" options={{ title: "Ficha" }} />
+        <Stack.Screen name="localizar/[id]" options={{ title: "Localizar persona" }} />
         <Stack.Screen name="privacy" options={{ title: "Privacidad" }} />
       </Stack>
     </ThemeProvider>
