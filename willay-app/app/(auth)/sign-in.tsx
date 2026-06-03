@@ -1,14 +1,11 @@
-// ════════════════════════════════════════════════════════════════════
-// ARCHIVO 2 de 7
-// UBICACIÓN:  willay-app/app/(auth)/sign-in.tsx
-// ════════════════════════════════════════════════════════════════════
-import { StyleSheet, Text, View, Pressable } from "react-native";
+import { useState } from "react";
+import { Alert, StyleSheet, Text, View } from "react-native";
 import { Link, router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
 import { Screen } from "@/components/ui/Screen";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
-import { useGoogleAuth } from "@/lib/auth";
+import { signInWithGoogle, isNativeGoogleSignInAvailable } from "@/lib/google-sign-in";
 import { colors } from "@/theme/colors";
 
 const FEATURES: { icon: keyof typeof Ionicons.glyphMap; label: string }[] = [
@@ -19,7 +16,29 @@ const FEATURES: { icon: keyof typeof Ionicons.glyphMap; label: string }[] = [
 ];
 
 export default function SignIn() {
-  const { ready, needsClientIds, signIn } = useGoogleAuth();
+  const [loading, setLoading] = useState(false);
+
+  async function handleGoogleSignIn() {
+    if (!isNativeGoogleSignInAvailable) {
+      Alert.alert(
+        "Expo Go",
+        "Google Sign-In requiere el build nativo.\nUsá 'Entrar como invitado' para probar la app."
+      );
+      return;
+    }
+    setLoading(true);
+    try {
+      await signInWithGoogle();
+      // El _layout.tsx detecta el cambio de auth y redirige automáticamente.
+    } catch (e) {
+      const err = e as Error & { code?: string };
+      if (err.code !== "CANCELLED") {
+        Alert.alert("Error al iniciar sesión", err.message);
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
     <Screen>
@@ -51,28 +70,18 @@ export default function SignIn() {
       {/* Botones */}
       <View style={styles.actions}>
         <PrimaryButton
-          title={
-            ready
-              ? "Continuar con Google"
-              : needsClientIds
-              ? "Google Sign-In no configurado"
-              : "Cargando…"
-          }
-          onPress={signIn}
-          disabled={!ready}
+          title="Continuar con Google"
+          onPress={handleGoogleSignIn}
+          loading={loading}
+          disabled={loading}
         />
 
         <PrimaryButton
           title="Entrar como invitado"
           variant="ghost"
           onPress={() => router.push("/(auth)/role-select")}
+          disabled={loading}
         />
-
-        {needsClientIds && (
-          <Text style={styles.hint}>
-            Configura GOOGLE_*_CLIENT_ID en .env para activar Google Sign-In.
-          </Text>
-        )}
       </View>
 
       <Link href="/privacy" style={styles.link}>
@@ -153,12 +162,6 @@ const styles = StyleSheet.create({
   actions: {
     gap: 12,
     marginTop: 8,
-  },
-  hint: {
-    color: colors.textMuted,
-    fontSize: 11,
-    textAlign: "center",
-    lineHeight: 16,
   },
   link: {
     color: colors.brand,

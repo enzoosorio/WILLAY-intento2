@@ -17,29 +17,8 @@ function resolve(value: unknown): unknown {
 export default ({ config }: { config: ExpoConfig }): ExpoConfig => {
   const merged: ExpoConfig = {
     ...config,
-    // Plugins necesarios para Firebase y Google Auth
-    plugins: [
-      "expo-router",
-      "expo-secure-store",
-      "expo-asset",
-      "@react-native-google-signin/google-signin",
-      [
-        "@react-native-firebase/app",
-        {
-          "android": "./google-services.json",
-          "ios": "./GoogleService-Info.plist"
-        }
-      ],
-      "@react-native-firebase/auth",
-      [
-        "expo-build-properties",
-        {
-          "android": {
-            "extraMavenRepos": ["https://maven.google.com"]
-          }
-        }
-      ]
-    ],
+    // Los plugins vienen de app.json — no se sobreescriben acá.
+    // app.config.ts solo gestiona las variables de entorno en `extra`.
     extra: resolve({
       ...(config.extra ?? {}),
       firebase: {
@@ -52,6 +31,7 @@ export default ({ config }: { config: ExpoConfig }): ExpoConfig => {
       },
       googleAuth: {
         webClientId: "$EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID",
+        iosClientId: "$EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID",
         androidClientId: "$EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID",
       },
       region: "southamerica-east1",
