@@ -15,8 +15,17 @@ function resolve(value: unknown): unknown {
 }
 
 export default ({ config }: { config: ExpoConfig }): ExpoConfig => {
+  // En EAS, GOOGLE_SERVICES_JSON es la ruta al archivo subido como secret.
+  // Localmente cae al archivo en el repo.
+  const googleServicesFile =
+    process.env.GOOGLE_SERVICES_JSON ?? "./google-services.json";
+
   const merged: ExpoConfig = {
     ...config,
+    android: {
+      ...config.android,
+      googleServicesFile,
+    },
     // Los plugins vienen de app.json — no se sobreescriben acá.
     // app.config.ts solo gestiona las variables de entorno en `extra`.
     extra: resolve({
