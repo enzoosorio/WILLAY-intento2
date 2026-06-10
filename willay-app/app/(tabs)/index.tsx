@@ -1,16 +1,24 @@
 // ════════════════════════════════════════════════════════════════════
 // UBICACIÓN:  willay-app/app/(tabs)/index.tsx
-// (Pantalla de Botón de Pánico — Vecino)
-//
-// Si el usuario es ADMIN, lo redirige automáticamente a su panel.
+// Pantalla principal del VECINO — diseño accesible para adultos mayores
+// Grid de categorías + Alerta Rápida (pánico)
 // ════════════════════════════════════════════════════════════════════
 import { useEffect, useRef, useState } from "react";
-import { Alert, Pressable, StyleSheet, Text, View, ActivityIndicator } from "react-native";
+import {
+  Alert,
+  Linking,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  ActivityIndicator,
+} from "react-native";
 import { addDoc, serverTimestamp } from "firebase/firestore";
 import * as Haptics from "expo-haptics";
 import { signInAnonymously } from "firebase/auth";
 import { Ionicons } from "@expo/vector-icons";
-import { Redirect } from "expo-router";
+import { Redirect, useRouter } from "expo-router";
 
 import { getFirebaseAuth, getDb } from "../../lib/firebase";
 import { Screen } from "../../components/ui/Screen";
@@ -20,17 +28,40 @@ import { useAuthUser, useUserDoc } from "../../lib/session";
 import { colors } from "../../theme/colors";
 
 const HOLD_MS = 2000;
+const EMERGENCY_CONTACTS = [
+  { label: "Serenazgo",  number: "012196220", display: "(01) 219-6220", icon: "shield-checkmark" as const, color: "#1A3A6B" },
+  { label: "Policía",   number: "105",        display: "105",            icon: "person"           as const, color: "#1A3A6B" },
+  { label: "Bomberos",  number: "116",        display: "116",            icon: "flame"            as const, color: colors.brand },
+];
 
-export default function Panic() {
+type Category = {
+  id: string;
+  label: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  incidentType: string;
+};
+
+const CATEGORIES: Category[] = [
+  { id: "extorsion",          label: "Extorsión",   icon: "phone-portrait",   incidentType: "otro" },
+  { id: "robo",               label: "Robo",         icon: "card",             incidentType: "robo" },
+  { id: "salud",              label: "Salud",        icon: "medkit",           incidentType: "accidente" },
+  { id: "incendio",           label: "Incendio",     icon: "flame",            incidentType: "otro" },
+  { id: "rescate",            label: "Rescate",      icon: "shield",           incidentType: "otro" },
+  { id: "violencia",          label: "Violencia",    icon: "hand-left",        incidentType: "violencia_familiar" },
+  { id: "desaparecida",       label: "Desaparecida", icon: "person-circle",   incidentType: "otro" },
+  { id: "otros",              label: "Otros",        icon: "grid",             incidentType: "otro" },
+];
+
+export default function Home() {
   const { user } = useAuthUser();
   const { data: profile } = useUserDoc(user?.uid);
   const auth = getFirebaseAuth();
+  const router = useRouter();
 
+  const [sending, setSending] = useState(false);
   const [holding, setHolding] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [sending, setSending] = useState(false);
   const [lastSent, setLastSent] = useState<string | null>(null);
-  const [loadingGuest, setLoadingGuest] = useState(false);
 
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const tick = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -40,29 +71,21 @@ export default function Panic() {
     if (tick.current) clearInterval(tick.current);
   }, []);
 
-  // --- LÓGICA DE INVITADO ---
-  async function handleGuestLogin() {
-    setLoadingGuest(true);
-    try {
-      await signInAnonymously(auth);
-    } catch (e) {
-      Alert.alert("Error", "No se pudo iniciar sesión de prueba.");
-    } finally {
-      setLoadingGuest(false);
-    }
+  if (profile?.role === "operator") {
+    return <Redirect href="/(tabs)/operator" />;
   }
 
-  // --- LÓGICA DE PÁNICO ---
+  // ── Alerta Rápida (pánico) ──
   function startHold() {
     if (sending) return;
     setHolding(true);
     setProgress(0);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
     const startedAt = Date.now();
     tick.current = setInterval(() => {
       setProgress(Math.min(1, (Date.now() - startedAt) / HOLD_MS));
     }, 50);
-    timer.current = setTimeout(fire, HOLD_MS);
+    timer.current = setTimeout(firePanic, HOLD_MS);
   }
 
   function cancelHold() {
@@ -72,7 +95,7 @@ export default function Panic() {
     setProgress(0);
   }
 
-  async function fire() {
+  async function firePanic() {
     cancelHold();
     setSending(true);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
@@ -83,7 +106,6 @@ export default function Panic() {
         currentUser = cred.user;
       }
       if (!currentUser) throw new Error("No autenticado");
-
       const loc = await getCurrentWithGeohash();
       await addDoc(reportsCol(), {
         authorUid: currentUser.uid,
@@ -103,85 +125,58 @@ export default function Panic() {
     }
   }
 
-  // --- REDIRECT ADMIN (después de todos los hooks, posición segura) ---
-  // El admin (serenazgo/policía) no usa pánico → va a su panel de Alertas.
-  if (profile?.role === "operator") {
-    return <Redirect href="/(tabs)/operator" />;
+  // ── Reporte por categoría ──
+  function handleCategory(cat: Category) {
+    if (cat.id === "desaparecida") {
+      router.push("/missing/new");
+      return;
+    }
+    router.push({ pathname: "/(tabs)/report", params: { incidentType: cat.incidentType, categoryLabel: cat.label } });
   }
 
-  // --- Pantalla cuando NO hay usuario ---
-  if (!user) {
-    return (
-      <Screen>
-        <View style={styles.guestWrap}>
-          <View style={styles.logoCircle}>
-            <Ionicons name="shield-checkmark" size={48} color={colors.text} />
-          </View>
-          <Text style={styles.brand}>Willay</Text>
-          <Text style={styles.subtitle}>Sistema de Seguridad Ciudadana</Text>
-
-          <Pressable
-            style={({ pressed }) => [styles.btnGuest, pressed && { opacity: 0.85 }]}
-            onPress={handleGuestLogin}
-          >
-            {loadingGuest ? (
-              <ActivityIndicator color="white" />
-            ) : (
-              <Text style={styles.btnTextGuest}>Entrar como Invitado</Text>
-            )}
-          </Pressable>
-        </View>
-      </Screen>
+  // ── Llamada de emergencia ──
+  function callNumber(label: string, number: string, display: string) {
+    Alert.alert(
+      `Llamar a ${label}`,
+      `¿Llamar al ${display}?`,
+      [
+        { text: "Cancelar", style: "cancel" },
+        { text: "Llamar", onPress: () => Linking.openURL(`tel:${number}`) },
+      ]
     );
   }
 
-  // --- Pantalla de Pánico ---
-  const ringSize = 230 - progress * 20;
+  const firstName = profile?.displayName?.split(" ")[0] ?? "vecino";
 
   return (
-    <Screen>
-      <View style={styles.header}>
-        <View style={styles.headerIcon}>
-          <Ionicons name="warning" size={20} color={colors.brand} />
+    <Screen padded={false}>
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* ── Saludo ── */}
+        <View style={styles.headerWrap}>
+          <Text style={styles.greeting}>Hola, {firstName} 👋</Text>
+          <Text style={styles.subGreeting}>Ayúdanos a denunciar</Text>
         </View>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.title}>Botón de pánico</Text>
-          <Text style={styles.subtitle}>
-            Mantén presionado 2 segundos para enviar una alerta.
-          </Text>
-        </View>
-      </View>
 
-      <View style={styles.center}>
-        <View style={styles.haloOuter} />
-        <View style={styles.haloMid} />
-
+        {/* ── Botón Alerta Rápida ── */}
         <Pressable
           onPressIn={startHold}
           onPressOut={cancelHold}
           disabled={sending}
           style={({ pressed }) => [
-            styles.btn,
-            { transform: [{ scale: pressed || holding ? 0.96 : 1 }] },
+            styles.alertBtn,
+            (pressed || holding) && { opacity: 0.9, transform: [{ scale: 0.98 }] },
           ]}
         >
-          <View
-            style={[
-              styles.ring,
-              {
-                width: ringSize,
-                height: ringSize,
-                opacity: holding ? 0.4 + progress * 0.6 : 0.35,
-              },
-            ]}
-          />
           {sending ? (
-            <ActivityIndicator size="large" color={colors.text} />
+            <ActivityIndicator color="white" size="large" />
           ) : (
             <>
-              <Ionicons name="alert-circle" size={42} color={colors.text} style={{ marginBottom: 4 }} />
-              <Text style={styles.btnText}>
-                {holding ? `${Math.round(progress * 100)}%` : "PÁNICO"}
+              <Ionicons name="alarm" size={32} color="white" />
+              <Text style={styles.alertBtnText}>
+                {holding ? `Enviando… ${Math.round(progress * 100)}%` : "Alerta Rápida"}
               </Text>
             </>
           )}
@@ -189,114 +184,150 @@ export default function Panic() {
 
         {lastSent && (
           <View style={styles.sentBadge}>
-            <Ionicons name="checkmark-circle" size={15} color={colors.success} />
+            <Ionicons name="checkmark-circle" size={16} color={colors.success} />
             <Text style={styles.sentText}>Alerta enviada · {lastSent}</Text>
           </View>
         )}
-      </View>
 
-      <View style={styles.infoCard}>
-        <Ionicons name="location" size={18} color={colors.brand} />
-        <Text style={styles.infoText}>
-          Tu ubicación se envía automáticamente junto con la alerta.
-        </Text>
-      </View>
+        {/* ── Categorías ── */}
+        <Text style={styles.sectionTitle}>Categorías</Text>
+
+        <View style={styles.grid}>
+          {CATEGORIES.map((cat) => (
+            <Pressable
+              key={cat.id}
+              style={({ pressed }) => [styles.catCard, pressed && { opacity: 0.8, transform: [{ scale: 0.96 }] }]}
+              onPress={() => handleCategory(cat)}
+            >
+              <Ionicons name={cat.icon} size={36} color="white" />
+              <Text style={styles.catLabel}>{cat.label}</Text>
+            </Pressable>
+          ))}
+
+          {/* Botones de emergencia */}
+          {EMERGENCY_CONTACTS.map((e) => (
+            <Pressable
+              key={e.label}
+              style={({ pressed }) => [styles.catCard, { backgroundColor: e.color }, pressed && { opacity: 0.8 }]}
+              onPress={() => callNumber(e.label, e.number, e.display)}
+            >
+              <Ionicons name={e.icon} size={36} color="white" />
+              <Text style={styles.catLabel}>{e.display}</Text>
+              <Text style={styles.emergencyLabel}>{e.label.toUpperCase()}</Text>
+            </Pressable>
+          ))}
+        </View>
+
+        <View style={{ height: 24 }} />
+      </ScrollView>
     </Screen>
   );
 }
 
-const styles = StyleSheet.create({
-  header: { flexDirection: "row", alignItems: "center", gap: 12 },
-  headerIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: colors.brand + "22",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  title: { color: colors.text, fontSize: 20, fontWeight: "800" },
-  subtitle: { color: colors.textMuted, fontSize: 13, lineHeight: 18 },
+const CAT_COLOR = "#1A3A6B"; // azul oscuro para las cards de categoría
 
-  center: { flex: 1, alignItems: "center", justifyContent: "center", gap: 18 },
-  haloOuter: {
-    position: "absolute",
-    width: 300,
-    height: 300,
-    borderRadius: 150,
-    backgroundColor: colors.brand + "0D",
+const styles = StyleSheet.create({
+  scroll: {
+    paddingHorizontal: 20,
+    paddingTop: 24,
   },
-  haloMid: {
-    position: "absolute",
-    width: 260,
-    height: 260,
-    borderRadius: 130,
-    backgroundColor: colors.brand + "14",
+
+  // Saludo
+  headerWrap: {
+    marginBottom: 20,
   },
-  btn: {
-    width: 210,
-    height: 210,
-    borderRadius: 105,
+  greeting: {
+    color: colors.text,
+    fontSize: 30,
+    fontWeight: "900",
+  },
+  subGreeting: {
+    color: colors.textMuted,
+    fontSize: 15,
+    marginTop: 4,
+  },
+
+  // Alerta rápida
+  alertBtn: {
     backgroundColor: colors.brand,
+    borderRadius: 16,
+    paddingVertical: 22,
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
+    gap: 12,
+    marginBottom: 12,
     shadowColor: colors.brand,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.6,
-    shadowRadius: 24,
-    elevation: 14,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.5,
+    shadowRadius: 16,
+    elevation: 10,
   },
-  ring: { position: "absolute", borderRadius: 999, borderWidth: 5, borderColor: colors.brandSoft },
-  btnText: { color: colors.text, fontSize: 28, fontWeight: "900", letterSpacing: 1.4 },
+  alertBtnText: {
+    color: "white",
+    fontSize: 24,
+    fontWeight: "900",
+    letterSpacing: 0.5,
+  },
+
   sentBadge: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
+    alignSelf: "center",
     backgroundColor: colors.surface,
     paddingHorizontal: 16,
-    paddingVertical: 9,
+    paddingVertical: 8,
     borderRadius: 999,
     borderWidth: 1,
     borderColor: colors.success,
+    marginBottom: 16,
   },
-  sentText: { color: colors.success, fontSize: 12, fontWeight: "600" },
+  sentText: {
+    color: colors.success,
+    fontSize: 13,
+    fontWeight: "600",
+  },
 
-  infoCard: {
+  // Sección
+  sectionTitle: {
+    color: colors.brand,
+    fontSize: 20,
+    fontWeight: "800",
+    marginBottom: 16,
+    marginTop: 4,
+  },
+
+  // Grid
+  grid: {
     flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: 14,
+    flexWrap: "wrap",
+    gap: 12,
   },
-  infoText: { color: colors.textMuted, fontSize: 12, lineHeight: 17, flex: 1 },
-
-  guestWrap: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12 },
-  logoCircle: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    backgroundColor: colors.brand,
+  catCard: {
+    width: "30%",
+    aspectRatio: 1,
+    backgroundColor: CAT_COLOR,
+    borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 8,
-    shadowColor: colors.brand,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.5,
-    shadowRadius: 18,
-    elevation: 10,
+    gap: 6,
+    paddingHorizontal: 6,
   },
-  brand: { color: colors.text, fontSize: 40, fontWeight: "900" },
-  btnGuest: {
+  catLabel: {
+    color: "white",
+    fontSize: 13,
+    fontWeight: "700",
+    textAlign: "center",
+  },
+  emergencyCard: {
     backgroundColor: colors.brand,
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    borderRadius: 14,
-    width: "85%",
-    alignItems: "center",
-    marginTop: 24,
   },
-  btnTextGuest: { color: "white", fontWeight: "700", fontSize: 15 },
+  emergencyLabel: {
+    color: "white",
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 1,
+    textAlign: "center",
+  },
 });

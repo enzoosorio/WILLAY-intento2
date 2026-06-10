@@ -1,5 +1,19 @@
-import { Alert, StyleSheet, Text, View, Modal, TouchableOpacity, ActivityIndicator } from "react-native";
-import { Link } from "expo-router";
+// ════════════════════════════════════════════════════════════════════
+// UBICACIÓN:  willay-app/app/(tabs)/profile.tsx
+// Perfil del vecino — diseño accesible, datos reales del usuario
+// ════════════════════════════════════════════════════════════════════
+import {
+  Alert,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  ActivityIndicator,
+} from "react-native";
+import { useRouter } from "expo-router";
 import { getFirestore, doc, updateDoc } from "firebase/firestore";
 import { useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
@@ -12,17 +26,19 @@ import { zoneLabel } from "@/lib/zones";
 import { colors } from "@/theme/colors";
 
 const ZONAS_DISPONIBLES = [
-  { id: "zapallal", label: "Zapallal" },
+  { id: "zapallal",     label: "Zapallal" },
   { id: "la_ensenada", label: "La Ensenada" },
   { id: "huamantanga", label: "Huamantanga" },
-  { id: "centro", label: "Centro" },
-  { id: "otros", label: "Otros" },
+  { id: "centro",      label: "Centro" },
+  { id: "otros",       label: "Otros" },
 ];
 
 export default function Profile() {
   const { user } = useAuthUser();
   const { data: profile } = useUserDoc(user?.uid);
-  const [modalVisible, setModalVisible] = useState(false);
+  const router = useRouter();
+
+  const [zonaModal, setZonaModal]       = useState(false);
   const [actualizando, setActualizando] = useState(false);
 
   const isOperator = profile?.role === "operator";
@@ -31,10 +47,9 @@ export default function Profile() {
     if (!user?.uid) return;
     setActualizando(true);
     try {
-      const db = getFirestore();
-      await updateDoc(doc(db, "users", user.uid), { zone: nuevaZonaId });
-      setModalVisible(false);
-    } catch (error) {
+      await updateDoc(doc(getFirestore(), "users", user.uid), { zone: nuevaZonaId });
+      setZonaModal(false);
+    } catch {
       Alert.alert("Error", "No se pudo actualizar la zona.");
     } finally {
       setActualizando(false);
@@ -48,149 +63,119 @@ export default function Profile() {
     ]);
   }
 
-  // ════════════════════════════════════════════════════════════════
-  // PERFIL DEL ADMINISTRADOR (policía / serenazgo / torre de control)
-  // ════════════════════════════════════════════════════════════════
+  // ── OPERADOR ──────────────────────────────────────────────────────
   if (isOperator) {
     return (
       <Screen scroll>
-        {/* Tarjeta de credencial */}
-        <View style={styles.credential}>
-          <View style={styles.credentialBadge}>
-            <Ionicons name="shield-checkmark" size={40} color={colors.warning} />
+        <Text style={styles.pageTitle}>Perfil</Text>
+
+        <View style={styles.avatarWrap}>
+          <View style={[styles.avatar, { borderColor: colors.warning }]}>
+            <Ionicons name="shield-checkmark" size={44} color={colors.warning} />
           </View>
-          <Text style={styles.credentialName}>
-            {profile?.displayName ?? "Administrador"}
-          </Text>
-          <View style={styles.roleTag}>
-            <Ionicons name="ribbon" size={13} color={colors.warning} />
-            <Text style={styles.roleTagText}>Central de Monitoreo</Text>
+          <Text style={styles.userName}>{profile?.displayName ?? "Operador"}</Text>
+          <View style={[styles.roleBadge, { backgroundColor: colors.warning + "22", borderColor: colors.warning }]}>
+            <Text style={[styles.roleBadgeText, { color: colors.warning }]}>OPERADOR</Text>
           </View>
         </View>
 
-        {/* Información de la cuenta */}
-        <Text style={styles.sectionLabel}>Información de la cuenta</Text>
-        <View style={styles.card}>
-          <Row icon="person" label="Operador" value={profile?.displayName ?? "—"} />
+        <Text style={styles.sectionLabel}>MI INFORMACIÓN</Text>
+        <View style={styles.infoCard}>
+          <InfoRow label="NOMBRE" value={profile?.displayName ?? "—"} />
           <Divider />
-          <Row icon="shield" label="Nivel de acceso" value="Administrador" />
+          <InfoRow label="ROL" value="Central de Monitoreo" />
           <Divider />
-          <Row
-            icon="checkmark-circle"
-            label="Estado"
-            value="Activo"
-            valueColor={colors.success}
-          />
+          <InfoRow label="ESTADO" value="Activo" valueColor={colors.success} />
         </View>
 
-        {/* Funciones */}
-        <Text style={styles.sectionLabel}>Permisos del rol</Text>
-        <View style={styles.card}>
-          <Permission icon="notifications" label="Gestionar alertas ciudadanas" />
-          <Divider />
-          <Permission icon="map" label="Monitoreo en mapa (radar)" />
-          <Divider />
-          <Permission icon="stats-chart" label="Estadísticas e incidencias" />
-        </View>
-
-        <View style={{ height: 20 }} />
-
-        <Link href="/privacy" style={styles.link}>
-          Política de privacidad
-        </Link>
-
-        <PrimaryButton title="Cerrar sesión" variant="danger" onPress={confirmSignOut} />
+        <NavCard label="Política de privacidad" onPress={() => router.push("/privacy")} />
+        <View style={{ height: 8 }} />
+        <NavCard label="Términos y condiciones" onPress={() => router.push("/privacy")} />
 
         <View style={{ height: 24 }} />
+        <PrimaryButton title="Cerrar sesión" variant="danger" onPress={confirmSignOut} />
+        <View style={{ height: 32 }} />
       </Screen>
     );
   }
 
-  // ════════════════════════════════════════════════════════════════
-  // PERFIL DEL VECINO
-  // ════════════════════════════════════════════════════════════════
+  // ── VECINO ────────────────────────────────────────────────────────
   return (
-    <Screen scroll>
-      {/* Tarjeta de credencial */}
-      <View style={styles.credential}>
-        <View style={[styles.credentialBadge, { borderColor: colors.brand }]}>
-          <Ionicons name="person" size={40} color={colors.brand} />
-        </View>
-        <Text style={styles.credentialName}>{profile?.displayName ?? "Vecino"}</Text>
-        <View style={[styles.roleTag, { borderColor: colors.brand }]}>
-          <Ionicons name="people" size={13} color={colors.brand} />
-          <Text style={[styles.roleTagText, { color: colors.brand }]}>Vecino</Text>
-        </View>
-      </View>
+    <Screen padded={false}>
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        <Text style={styles.pageTitle}>Perfil</Text>
 
-      {/* Información */}
-      <Text style={styles.sectionLabel}>Mi información</Text>
-      <View style={styles.card}>
-        <Row icon="person" label="Nombre" value={profile?.displayName ?? "—"} />
-        <Divider />
-        {/* Zona editable */}
-        <TouchableOpacity style={styles.rowTouch} onPress={() => setModalVisible(true)}>
-          <View style={styles.rowLeft}>
-            <Ionicons name="location" size={16} color={colors.textMuted} />
-            <Text style={styles.rowL}>Zona</Text>
+        {/* Avatar + nombre + badge */}
+        <View style={styles.avatarWrap}>
+          <View style={[styles.avatar, { borderColor: colors.brand }]}>
+            <Ionicons name="person" size={44} color={colors.textMuted} />
           </View>
-          <View style={styles.rowEditWrap}>
-            <Text style={styles.rowVBrand} numberOfLines={1}>
-              {zoneLabel(profile?.zone) || "Seleccionar"}
-            </Text>
-            <Ionicons name="pencil" size={13} color={colors.brand} />
+          <Text style={styles.userName}>{profile?.displayName ?? "Vecino"}</Text>
+          <View style={styles.roleBadge}>
+            <Text style={styles.roleBadgeText}>VECINO</Text>
           </View>
-        </TouchableOpacity>
-      </View>
+        </View>
 
-      <View style={{ height: 20 }} />
+        {/* Datos */}
+        <Text style={styles.sectionLabel}>MI INFORMACIÓN</Text>
+        <View style={styles.infoCard}>
+          {/* Nombre (solo lectura) */}
+          <InfoRow label="NOMBRE" value={profile?.displayName ?? "—"} />
+          <Divider />
 
-      <Link href="/privacy" style={styles.link}>
-        Política de privacidad
-      </Link>
+          {/* Zona editable */}
+          <TouchableOpacity style={styles.editRow} onPress={() => setZonaModal(true)}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.rowLabel}>ZONA</Text>
+              <Text style={styles.rowValue}>{zoneLabel(profile?.zone) || "Seleccionar"}</Text>
+            </View>
+            <View style={styles.editIcon}>
+              <Ionicons name="pencil" size={16} color={colors.textMuted} />
+            </View>
+          </TouchableOpacity>
+          <Divider />
 
-      <PrimaryButton title="Cerrar sesión" variant="danger" onPress={confirmSignOut} />
+          {/* Teléfono (solo lectura, desde perfil) */}
+          <InfoRow
+            label="TELÉFONO"
+            value={profile?.phone ? `+51 ${profile.phone}` : "No registrado"}
+          />
+        </View>
 
-      <View style={{ height: 24 }} />
+        {/* Links */}
+        <View style={{ height: 16 }} />
+        <NavCard label="Política de privacidad" onPress={() => router.push("/privacy")} />
+        <View style={{ height: 8 }} />
+        <NavCard label="Términos y condiciones" onPress={() => router.push("/privacy")} />
+
+        <View style={{ height: 24 }} />
+        <PrimaryButton title="Cerrar sesión" variant="danger" onPress={confirmSignOut} />
+        <View style={{ height: 32 }} />
+      </ScrollView>
 
       {/* Modal cambiar zona */}
-      <Modal
-        visible={modalVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setModalVisible(false)}
-      >
+      <Modal visible={zonaModal} transparent animationType="fade" onRequestClose={() => setZonaModal(false)}>
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <View style={styles.modalBox}>
             <Text style={styles.modalTitle}>Cambiar zona</Text>
             {actualizando ? (
-              <ActivityIndicator size="large" color={colors.brand} />
+              <ActivityIndicator size="large" color={colors.brand} style={{ marginVertical: 24 }} />
             ) : (
               ZONAS_DISPONIBLES.map((z) => (
                 <TouchableOpacity
                   key={z.id}
-                  style={[
-                    styles.zonaOption,
-                    profile?.zone === z.id && styles.zonaOptionActive,
-                  ]}
+                  style={[styles.zonaOpt, profile?.zone === z.id && styles.zonaOptActive]}
                   onPress={() => cambiarZona(z.id)}
                 >
-                  <Text
-                    style={[
-                      styles.zonaOptionText,
-                      profile?.zone === z.id && { color: colors.brand, fontWeight: "700" },
-                    ]}
-                  >
+                  <Text style={[styles.zonaOptText, profile?.zone === z.id && { color: colors.brand, fontWeight: "700" }]}>
                     {z.label}
                   </Text>
-                  {profile?.zone === z.id && (
-                    <Ionicons name="checkmark" size={16} color={colors.brand} />
-                  )}
+                  {profile?.zone === z.id && <Ionicons name="checkmark" size={18} color={colors.brand} />}
                 </TouchableOpacity>
               ))
             )}
-            <TouchableOpacity style={styles.cancelButton} onPress={() => setModalVisible(false)}>
-              <Text style={styles.cancelButtonText}>Cancelar</Text>
+            <TouchableOpacity style={styles.cancelBtn} onPress={() => setZonaModal(false)}>
+              <Text style={styles.cancelText}>Cancelar</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -199,45 +184,23 @@ export default function Profile() {
   );
 }
 
-function Row({
-  icon,
-  label,
-  value,
-  valueColor,
-}: {
-  icon: keyof typeof Ionicons.glyphMap;
-  label: string;
-  value: string;
-  valueColor?: string;
-}) {
+// ── Sub-componentes ──────────────────────────────────────────────────
+
+function InfoRow({ label, value, valueColor }: { label: string; value: string; valueColor?: string }) {
   return (
-    <View style={styles.row}>
-      <View style={styles.rowLeft}>
-        <Ionicons name={icon} size={16} color={colors.textMuted} />
-        <Text style={styles.rowL}>{label}</Text>
-      </View>
-      <Text style={[styles.rowV, valueColor && { color: valueColor }]} numberOfLines={1}>
-        {value}
-      </Text>
+    <View style={styles.infoRow}>
+      <Text style={styles.rowLabel}>{label}</Text>
+      <Text style={[styles.rowValue, valueColor ? { color: valueColor } : {}]}>{value}</Text>
     </View>
   );
 }
 
-function Permission({
-  icon,
-  label,
-}: {
-  icon: keyof typeof Ionicons.glyphMap;
-  label: string;
-}) {
+function NavCard({ label, onPress }: { label: string; onPress: () => void }) {
   return (
-    <View style={styles.row}>
-      <View style={styles.rowLeft}>
-        <Ionicons name={icon} size={16} color={colors.warning} />
-        <Text style={styles.permissionText}>{label}</Text>
-      </View>
-      <Ionicons name="checkmark-circle" size={18} color={colors.success} />
-    </View>
+    <TouchableOpacity style={styles.navCard} onPress={onPress}>
+      <Text style={styles.navCardText}>{label}</Text>
+      <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+    </TouchableOpacity>
   );
 }
 
@@ -245,111 +208,139 @@ function Divider() {
   return <View style={styles.divider} />;
 }
 
+// ── Estilos ──────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
-  // Credencial
-  credential: {
-    alignItems: "center",
-    gap: 8,
-    paddingVertical: 16,
+  scroll: { paddingHorizontal: 20, paddingTop: 24 },
+
+  pageTitle: {
+    color: colors.text,
+    fontSize: 28,
+    fontWeight: "900",
+    marginBottom: 24,
   },
-  credentialBadge: {
-    width: 84,
-    height: 84,
-    borderRadius: 42,
+
+  // Avatar
+  avatarWrap: { alignItems: "center", gap: 10, marginBottom: 28 },
+  avatar: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
     backgroundColor: colors.surface,
     borderWidth: 2,
-    borderColor: colors.warning,
+    borderColor: colors.brand,
     alignItems: "center",
     justifyContent: "center",
   },
-  credentialName: {
+  userName: {
     color: colors.text,
     fontSize: 22,
     fontWeight: "800",
-    marginTop: 4,
   },
-  roleTag: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
+  roleBadge: {
+    backgroundColor: colors.brand + "22",
     borderWidth: 1,
-    borderColor: colors.warning,
+    borderColor: colors.brand,
     borderRadius: 999,
-    paddingHorizontal: 12,
+    paddingHorizontal: 16,
     paddingVertical: 5,
   },
-  roleTagText: {
-    color: colors.warning,
-    fontSize: 13,
-    fontWeight: "700",
+  roleBadgeText: {
+    color: colors.brand,
+    fontSize: 12,
+    fontWeight: "800",
+    letterSpacing: 1.5,
   },
 
+  // Sección
   sectionLabel: {
     color: colors.textMuted,
     fontSize: 12,
     fontWeight: "700",
-    letterSpacing: 1,
-    textTransform: "uppercase",
-    marginTop: 16,
-    marginBottom: 8,
+    letterSpacing: 1.2,
+    marginBottom: 10,
   },
 
-  card: {
+  // Card de info
+  infoCard: {
     backgroundColor: colors.surface,
-    borderRadius: 12,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: colors.border,
-    paddingHorizontal: 14,
-    paddingVertical: 4,
+    paddingHorizontal: 16,
+    overflow: "hidden",
   },
-  row: {
+  infoRow: {
+    paddingVertical: 14,
+  },
+  editRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    gap: 10,
-    paddingVertical: 12,
+    paddingVertical: 14,
   },
-  rowLeft: { flexDirection: "row", alignItems: "center", gap: 10, flexShrink: 1 },
-  rowL: { color: colors.textMuted, fontSize: 14 },
-  rowV: { color: colors.text, fontSize: 14, fontWeight: "600", flexShrink: 1, textAlign: "right" },
-  permissionText: { color: colors.text, fontSize: 14, flexShrink: 1 },
+  rowLabel: {
+    color: colors.textMuted,
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 0.8,
+    marginBottom: 3,
+  },
+  rowValue: {
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  editIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    backgroundColor: colors.surfaceAlt,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   divider: { height: 1, backgroundColor: colors.border },
 
-  rowTouch: {
+  // Nav cards
+  navCard: {
+    backgroundColor: colors.surface,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: 16,
+    paddingVertical: 18,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    gap: 10,
-    paddingVertical: 12,
   },
-  rowEditWrap: { flexDirection: "row", alignItems: "center", gap: 6 },
-  rowVBrand: { color: colors.brand, fontSize: 14, fontWeight: "700" },
+  navCardText: {
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: "600",
+  },
 
-  link: { color: colors.brand, textAlign: "center", fontSize: 13, marginBottom: 14 },
-
-  // Modal
-  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", padding: 20 },
-  modalContent: {
+  // Modal zona
+  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.65)", justifyContent: "center", padding: 20 },
+  modalBox: {
     backgroundColor: colors.surface,
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 20,
     borderWidth: 1,
     borderColor: colors.border,
   },
   modalTitle: { color: colors.text, fontSize: 18, fontWeight: "800", marginBottom: 16, textAlign: "center" },
-  zonaOption: {
+  zonaOpt: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     padding: 14,
-    borderRadius: 8,
+    borderRadius: 10,
     marginBottom: 8,
     backgroundColor: colors.bg,
     borderWidth: 1,
     borderColor: colors.border,
   },
-  zonaOptionActive: { borderColor: colors.brand, backgroundColor: colors.surfaceAlt },
-  zonaOptionText: { color: colors.text, fontSize: 15 },
-  cancelButton: { marginTop: 8, alignItems: "center", paddingVertical: 8 },
-  cancelButtonText: { color: colors.textMuted, fontSize: 14 },
+  zonaOptActive: { borderColor: colors.brand, backgroundColor: colors.surfaceAlt },
+  zonaOptText: { color: colors.text, fontSize: 15 },
+  cancelBtn: { marginTop: 4, alignItems: "center", paddingVertical: 10 },
+  cancelText: { color: colors.textMuted, fontSize: 14 },
 });

@@ -1,20 +1,26 @@
+// ════════════════════════════════════════════════════════════════════
+// UBICACIÓN:  willay-app/app/(tabs)/report.tsx
+// Pantalla de reporte — se abre desde las categorías del home
+// Header con tipo preseleccionado, descripción + foto, botón REGISTRAR
+// ════════════════════════════════════════════════════════════════════
 import { useState } from "react";
 import {
   Alert,
   Image,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
+  TouchableOpacity,
 } from "react-native";
 import { doc, serverTimestamp, setDoc } from "firebase/firestore";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 
 import { Screen } from "@/components/ui/Screen";
-import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { reportsCol } from "@/lib/collections";
 import { getCurrentWithGeohash } from "@/lib/location";
 import { uploadReportPhoto } from "@/lib/storage";
@@ -28,104 +34,85 @@ const INCIDENT_TYPES: {
   id: IncidentType;
   label: string;
   icon: keyof typeof Ionicons.glyphMap;
-  color: string;
 }[] = [
-  { id: "robo", label: "Robo", icon: "bag-remove", color: "#FF5C5C" },
-  { id: "asalto", label: "Asalto", icon: "alert-circle", color: "#FF8A3D" },
-  { id: "violencia_familiar", label: "Violencia familiar", icon: "people", color: "#E0457B" },
-  { id: "accidente", label: "Accidente", icon: "car-sport", color: "#F5A524" },
-  { id: "persona_sospechosa", label: "Persona sospechosa", icon: "eye", color: "#8B5CF6" },
-  { id: "vandalismo", label: "Vandalismo", icon: "hammer", color: "#3DA5D9" },
-  { id: "otro", label: "Otro", icon: "ellipsis-horizontal-circle", color: "#A1A8B8" },
+  { id: "robo",               label: "Robo",       icon: "card"         },
+  { id: "asalto",             label: "Extorsión",  icon: "phone-portrait"},
+  { id: "violencia_familiar", label: "Violencia",  icon: "hand-left"    },
+  { id: "accidente",          label: "Salud",      icon: "medkit"       },
+  { id: "persona_sospechosa", label: "Rescate",    icon: "shield"       },
+  { id: "vandalismo",         label: "Incendio",   icon: "flame"        },
+  { id: "otro",               label: "Otros",      icon: "grid"         },
 ];
 
-export default function ReportText() {
+function getIncident(id?: string) {
+  return INCIDENT_TYPES.find((t) => t.id === id) ?? null;
+}
+
+export default function ReportScreen() {
   const { user } = useAuthUser();
   const router = useRouter();
-  const [incidentType, setIncidentType] = useState<IncidentType | null>(null);
+  const params = useLocalSearchParams<{ incidentType?: string; categoryLabel?: string }>();
+
+  const initial = getIncident(params.incidentType);
+  const [incidentType, setIncidentType] = useState<IncidentType | null>(initial?.id ?? null);
   const [text, setText] = useState("");
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
+  const [showTypes, setShowTypes] = useState(!initial); // si viene preseleccionado, ocultar el picker
 
-  // ── Tomar foto con la cámara ──
+  const selected = getIncident(incidentType ?? undefined);
+
+  // ── Foto ──────────────────────────────────────────────────────────
   async function takePhoto() {
     const perm = await ImagePicker.requestCameraPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert("Permiso necesario", "Activa el permiso de cámara para tomar una foto.");
+      Alert.alert("Permiso necesario", "Activa el permiso de cámara.");
       return;
     }
-    const res = await ImagePicker.launchCameraAsync({
-      quality: 0.6,
-      allowsEditing: true,
-      aspect: [4, 3],
-    });
-    if (!res.canceled && res.assets[0]) {
-      setPhotoUri(res.assets[0].uri);
-    }
+    const res = await ImagePicker.launchCameraAsync({ quality: 0.6, allowsEditing: true, aspect: [4, 3] });
+    if (!res.canceled && res.assets[0]) setPhotoUri(res.assets[0].uri);
   }
 
-  // ── Elegir foto de la galería ──
   async function pickPhoto() {
-    const res = await ImagePicker.launchImageLibraryAsync({
-      quality: 0.6,
-      allowsEditing: true,
-      aspect: [4, 3],
-    });
-    if (!res.canceled && res.assets[0]) {
-      setPhotoUri(res.assets[0].uri);
-    }
+    const res = await ImagePicker.launchImageLibraryAsync({ quality: 0.6, allowsEditing: true, aspect: [4, 3] });
+    if (!res.canceled && res.assets[0]) setPhotoUri(res.assets[0].uri);
   }
 
-  // ── Preguntar cámara o galería ──
-  function choosePhotoSource() {
-    Alert.alert("Adjuntar foto", "¿De dónde quieres tomar la foto?", [
+  function choosePhoto() {
+    Alert.alert("Adjuntar foto", "¿De dónde?", [
       { text: "Cámara", onPress: takePhoto },
       { text: "Galería", onPress: pickPhoto },
       { text: "Cancelar", style: "cancel" },
     ]);
   }
 
+  // ── Enviar ────────────────────────────────────────────────────────
   async function submit() {
     if (!user) return;
-
     if (!incidentType) {
       Alert.alert("Falta el tipo", "Selecciona el tipo de incidente.");
       return;
     }
-
     const trimmed = text.trim();
     if (!trimmed) {
       Alert.alert("Falta la descripción", "Describe brevemente qué pasó.");
-      return;
-    }
-    if (trimmed.length > MAX) {
-      Alert.alert("Reporte muy largo", `Máximo ${MAX} caracteres.`);
       return;
     }
 
     setSending(true);
     try {
       const loc = await getCurrentWithGeohash();
-
-      // Generamos primero la referencia (y su ID) para el nuevo reporte.
       const ref = doc(reportsCol());
 
-      // Si hay foto, la subimos ANTES de crear el documento, usando el ID.
-      // Así la URL se incluye en el create (el vecino no puede hacer update).
       let photoUrl: string | undefined;
       if (photoUri) {
         try {
           photoUrl = await uploadReportPhoto(ref.id, photoUri);
-        } catch (photoErr) {
-          console.warn("[report] error subiendo foto", photoErr);
-          Alert.alert(
-            "Foto no subida",
-            "No se pudo subir la foto. El reporte se enviará sin imagen.",
-          );
+        } catch {
+          Alert.alert("Foto no subida", "El reporte se enviará sin imagen.");
         }
       }
 
-      // Creamos el documento con todos los datos (incluida la foto si existe).
       await setDoc(ref, {
         authorUid: user.uid,
         type: "text",
@@ -151,212 +138,293 @@ export default function ReportText() {
     }
   }
 
+  const canSubmit = !!incidentType && text.trim().length > 0 && !sending;
+
   return (
-    <Screen scroll>
-      <Text style={styles.h1}>Reportar incidente</Text>
-      <Text style={styles.muted}>
-        Selecciona el tipo, describe qué pasó y envía. Tu ubicación se adjunta
-        automáticamente.
-      </Text>
-
-      {/* ── Tipo de incidente ── */}
-      <Text style={styles.sectionLabel}>Tipo de incidente</Text>
-      <View style={styles.typeGrid}>
-        {INCIDENT_TYPES.map((t) => {
-          const active = incidentType === t.id;
-          return (
-            <Pressable
-              key={t.id}
-              onPress={() => setIncidentType(t.id)}
-              style={[
-                styles.typeCard,
-                active && { borderColor: t.color, backgroundColor: colors.surfaceAlt },
-              ]}
-            >
-              <View style={[styles.typeIconWrap, { backgroundColor: t.color + "22" }]}>
-                <Ionicons name={t.icon} size={22} color={t.color} />
-              </View>
-              <Text
-                style={[styles.typeLabel, active && { color: t.color, fontWeight: "800" }]}
-                numberOfLines={2}
-              >
-                {t.label}
-              </Text>
-              {active && (
-                <View style={[styles.typeCheck, { backgroundColor: t.color }]}>
-                  <Ionicons name="checkmark" size={11} color="#fff" />
-                </View>
-              )}
-            </Pressable>
-          );
-        })}
-      </View>
-
-      {/* ── Descripción ── */}
-      <Text style={styles.sectionLabel}>Descripción</Text>
-      <View style={styles.box}>
-        <TextInput
-          style={styles.input}
-          placeholder="Ej.: dos sujetos con cuchillo cerca del parque…"
-          placeholderTextColor={colors.textMuted}
-          multiline
-          value={text}
-          onChangeText={(t) => setText(t.slice(0, MAX))}
-          maxLength={MAX}
-        />
-        <Text
-          style={[styles.counter, text.length > MAX * 0.9 && { color: colors.warning }]}
-        >
-          {text.length} / {MAX}
-        </Text>
-      </View>
-
-      {/* ── Foto opcional ── */}
-      <Text style={styles.sectionLabel}>Foto (opcional)</Text>
-      {photoUri ? (
-        <View style={styles.photoPreviewWrap}>
-          <Image source={{ uri: photoUri }} style={styles.photoPreview} />
-          <Pressable style={styles.photoRemove} onPress={() => setPhotoUri(null)}>
-            <Ionicons name="close-circle" size={26} color="#fff" />
-          </Pressable>
-          <Pressable style={styles.photoChange} onPress={choosePhotoSource}>
-            <Ionicons name="camera-reverse" size={16} color={colors.text} />
-            <Text style={styles.photoChangeText}>Cambiar</Text>
-          </Pressable>
+    <Screen padded={false}>
+      {/* ── Header con tipo seleccionado ── */}
+      <View style={[styles.header, { backgroundColor: selected?.color ?? colors.brand }]}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+          <Ionicons name="arrow-back" size={22} color="white" />
+        </TouchableOpacity>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.headerSub}>Nuevo Reporte</Text>
+          <Text style={styles.headerTitle}>
+            {selected ? `Alerta de ${selected.label}` : "Selecciona un tipo"}
+          </Text>
         </View>
-      ) : (
-        <Pressable style={styles.photoBtn} onPress={choosePhotoSource}>
-          <Ionicons name="camera" size={22} color={colors.brand} />
-          <Text style={styles.photoBtnText}>Adjuntar foto</Text>
-        </Pressable>
-      )}
+        {selected && (
+          <Ionicons name={selected.icon} size={32} color="white" style={{ opacity: 0.85 }} />
+        )}
+      </View>
 
-      <View style={{ height: 8 }} />
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
-      <PrimaryButton
-        title={sending ? "Enviando…" : "Enviar reporte"}
-        onPress={submit}
-        loading={sending}
-        disabled={!incidentType || !text.trim()}
-      />
+        {/* ── Cambiar tipo (toggle) ── */}
+        <TouchableOpacity style={styles.changeTypeBtn} onPress={() => setShowTypes((v) => !v)}>
+          <Ionicons name="swap-horizontal" size={16} color={colors.brand} />
+          <Text style={styles.changeTypeTxt}>
+            {showTypes ? "Ocultar tipos" : "Cambiar tipo de incidente"}
+          </Text>
+          <Ionicons name={showTypes ? "chevron-up" : "chevron-down"} size={16} color={colors.brand} />
+        </TouchableOpacity>
 
-      <View style={{ height: 20 }} />
+        {/* ── Grid de tipos (colapsable) — mismo estilo que el home ── */}
+        {showTypes && (
+          <View style={styles.typeGrid}>
+            {INCIDENT_TYPES.map((t) => {
+              const active = incidentType === t.id;
+              return (
+                <Pressable
+                  key={t.id}
+                  onPress={() => { setIncidentType(t.id); setShowTypes(false); }}
+                  style={({ pressed }) => [
+                    styles.typeCard,
+                    active && styles.typeCardActive,
+                    pressed && { opacity: 0.8, transform: [{ scale: 0.96 }] },
+                  ]}
+                >
+                  <Ionicons name={t.icon} size={34} color="white" />
+                  <Text style={styles.typeLabel}>{t.label}</Text>
+                  {active && (
+                    <View style={styles.typeCheck}>
+                      <Ionicons name="checkmark" size={11} color="#fff" />
+                    </View>
+                  )}
+                </Pressable>
+              );
+            })}
+          </View>
+        )}
+
+        {/* ── Descripción ── */}
+        <Text style={styles.sectionLabel}>Descripción</Text>
+        <View style={styles.inputBox}>
+          <TextInput
+            style={styles.input}
+            placeholder="Escribe tus comentarios..."
+            placeholderTextColor={colors.textMuted}
+            multiline
+            value={text}
+            onChangeText={(t) => setText(t.slice(0, MAX))}
+            maxLength={MAX}
+          />
+          <Text style={[styles.counter, text.length > MAX * 0.85 && { color: colors.warning }]}>
+            {text.length} / {MAX}
+          </Text>
+        </View>
+
+        {/* ── Foto ── */}
+        <Text style={styles.sectionLabel}>Imágenes adjuntas</Text>
+        {photoUri ? (
+          <View style={styles.photoPreviewWrap}>
+            <Image source={{ uri: photoUri }} style={styles.photoPreview} />
+            <TouchableOpacity style={styles.photoRemove} onPress={() => setPhotoUri(null)}>
+              <Ionicons name="close-circle" size={28} color="white" />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.photoChange} onPress={choosePhoto}>
+              <Ionicons name="camera-reverse" size={14} color={colors.text} />
+              <Text style={styles.photoChangeTxt}>Cambiar</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View style={styles.mediaRow}>
+            <TouchableOpacity style={styles.mediaBtn} onPress={takePhoto}>
+              <View style={[styles.mediaIcon, { backgroundColor: colors.brand }]}>
+                <Ionicons name="camera" size={26} color="white" />
+              </View>
+              <Text style={styles.mediaTxt}>Cámara</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.mediaBtn} onPress={pickPhoto}>
+              <View style={[styles.mediaIcon, { backgroundColor: colors.surfaceAlt }]}>
+                <Ionicons name="image" size={26} color={colors.textMuted} />
+              </View>
+              <Text style={styles.mediaTxt}>Galería</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.mediaBtn} onPress={() =>
+              Alert.alert("Próximamente", "La grabación de audio estará disponible pronto.")
+            }>
+              <View style={[styles.mediaIcon, { backgroundColor: colors.surfaceAlt }]}>
+                <Ionicons name="mic" size={26} color={colors.textMuted} />
+              </View>
+              <Text style={styles.mediaTxt}>Audio</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* ── Info ubicación ── */}
+        <View style={styles.locationNote}>
+          <Ionicons name="location" size={16} color={colors.success} />
+          <Text style={styles.locationTxt}>Tu ubicación se adjunta automáticamente</Text>
+        </View>
+
+        <View style={{ height: 16 }} />
+
+        {/* ── Botón REGISTRAR ── */}
+        <TouchableOpacity
+          style={[styles.submitBtn, !canSubmit && { opacity: 0.45 }]}
+          onPress={submit}
+          disabled={!canSubmit}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.submitTxt}>{sending ? "ENVIANDO…" : "REGISTRAR"}</Text>
+        </TouchableOpacity>
+
+        <View style={{ height: 32 }} />
+      </ScrollView>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  h1: { color: colors.text, fontSize: 22, fontWeight: "800" },
-  muted: { color: colors.textMuted, fontSize: 13, lineHeight: 18 },
-  sectionLabel: {
-    color: colors.text,
-    fontSize: 14,
-    fontWeight: "700",
-    marginTop: 8,
+  // Header dinámico
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 20,
   },
+  backBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(0,0,0,0.2)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  headerSub: { color: "rgba(255,255,255,0.75)", fontSize: 12, fontWeight: "600" },
+  headerTitle: { color: "white", fontSize: 20, fontWeight: "900" },
 
-  // Grid de tipos
-  typeGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
-  typeCard: {
-    flexBasis: "30%",
-    flexGrow: 1,
-    backgroundColor: colors.surface,
-    borderRadius: 14,
-    borderWidth: 2,
-    borderColor: colors.border,
-    paddingVertical: 14,
-    paddingHorizontal: 8,
+  scroll: { paddingHorizontal: 20, paddingTop: 16 },
+
+  // Cambiar tipo
+  changeTypeBtn: {
+    flexDirection: "row",
     alignItems: "center",
     gap: 8,
+    alignSelf: "flex-start",
+    backgroundColor: colors.brand + "18",
+    borderWidth: 1,
+    borderColor: colors.brand + "44",
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    marginBottom: 16,
+  },
+  changeTypeTxt: { color: colors.brand, fontSize: 13, fontWeight: "700" },
+
+  // Grid tipos — mismo estilo que el home
+  typeGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12, marginBottom: 16 },
+  typeCard: {
+    width: "30%",
+    aspectRatio: 1,
+    backgroundColor: "#1A3A6B",
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingHorizontal: 6,
     position: "relative",
   },
-  typeIconWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
+  typeCardActive: {
+    backgroundColor: "#1A3A6B",
+    borderWidth: 2,
+    borderColor: "white",
   },
-  typeLabel: {
+  typeLabel: { color: "white", fontSize: 13, fontWeight: "700", textAlign: "center" },
+  typeCheck: {
+    position: "absolute", top: 6, right: 6,
+    width: 18, height: 18, borderRadius: 9,
+    backgroundColor: colors.brand,
+    alignItems: "center", justifyContent: "center",
+  },
+  typeIconWrap: { width: 48, height: 48, borderRadius: 14, alignItems: "center", justifyContent: "center" },
+
+  // Sección label
+  sectionLabel: {
     color: colors.textMuted,
     fontSize: 12,
-    textAlign: "center",
-    lineHeight: 15,
-  },
-  typeCheck: {
-    position: "absolute",
-    top: 8,
-    right: 8,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    alignItems: "center",
-    justifyContent: "center",
+    fontWeight: "700",
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+    marginBottom: 10,
+    marginTop: 4,
   },
 
-  // Caja de texto
-  box: {
+  // Input descripción
+  inputBox: {
     backgroundColor: colors.surface,
-    borderRadius: 10,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: colors.border,
-    padding: 12,
-    gap: 8,
+    padding: 14,
+    marginBottom: 20,
   },
   input: {
     color: colors.text,
-    fontSize: 15,
-    minHeight: 110,
+    fontSize: 16,
+    minHeight: 130,
     textAlignVertical: "top",
-    lineHeight: 21,
+    lineHeight: 24,
   },
-  counter: { color: colors.textMuted, fontSize: 11, textAlign: "right" },
+  counter: { color: colors.textMuted, fontSize: 12, textAlign: "right", marginTop: 8 },
 
-  // Botón de foto
-  photoBtn: {
+  // Media row
+  mediaRow: {
     flexDirection: "row",
+    justifyContent: "center",
+    gap: 32,
+    paddingVertical: 12,
+    marginBottom: 16,
+  },
+  mediaBtn: { alignItems: "center", gap: 8 },
+  mediaIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.brand,
-    borderRadius: 12,
-    paddingVertical: 16,
-    borderStyle: "dashed",
   },
-  photoBtnText: { color: colors.brand, fontSize: 15, fontWeight: "700" },
+  mediaTxt: { color: colors.textMuted, fontSize: 13, fontWeight: "600" },
 
-  // Preview de foto
-  photoPreviewWrap: {
-    borderRadius: 12,
-    overflow: "hidden",
-    position: "relative",
-  },
-  photoPreview: {
-    width: "100%",
-    height: 200,
-    borderRadius: 12,
-    backgroundColor: colors.surfaceAlt,
-  },
-  photoRemove: {
-    position: "absolute",
-    top: 8,
-    right: 8,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    borderRadius: 999,
-  },
+  // Preview foto
+  photoPreviewWrap: { borderRadius: 14, overflow: "hidden", position: "relative", marginBottom: 16 },
+  photoPreview: { width: "100%", height: 200, backgroundColor: colors.surfaceAlt },
+  photoRemove: { position: "absolute", top: 8, right: 8, backgroundColor: "rgba(0,0,0,0.5)", borderRadius: 999 },
   photoChange: {
-    position: "absolute",
-    bottom: 8,
-    right: 8,
+    position: "absolute", bottom: 8, right: 8,
+    flexDirection: "row", alignItems: "center", gap: 5,
+    backgroundColor: "rgba(0,0,0,0.6)", paddingHorizontal: 12, paddingVertical: 7, borderRadius: 999,
+  },
+  photoChangeTxt: { color: colors.text, fontSize: 12, fontWeight: "600" },
+
+  // Nota ubicación
+  locationNote: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 5,
-    backgroundColor: "rgba(0,0,0,0.6)",
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 999,
+    gap: 8,
+    backgroundColor: colors.success + "18",
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: colors.success + "44",
   },
-  photoChangeText: { color: colors.text, fontSize: 12, fontWeight: "600" },
+  locationTxt: { color: colors.success, fontSize: 13, fontWeight: "600", flex: 1 },
+
+  // Botón REGISTRAR
+  submitBtn: {
+    backgroundColor: colors.brand,
+    borderRadius: 16,
+    paddingVertical: 20,
+    alignItems: "center",
+    shadowColor: colors.brand,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.45,
+    shadowRadius: 14,
+    elevation: 10,
+  },
+  submitTxt: { color: "white", fontSize: 18, fontWeight: "900", letterSpacing: 1.5 },
 });

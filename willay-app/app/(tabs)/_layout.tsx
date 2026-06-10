@@ -41,34 +41,34 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: "Pánico",
-          tabBarIcon: tabIcon("alert-circle"),
+          title: "Inicio",
+          tabBarIcon: tabIcon("home"),
           href: isOperator ? null : "/(tabs)",
-        }}
-      />
-      <Tabs.Screen
-        name="report"
-        options={{
-          title: "Reportar",
-          tabBarIcon: tabIcon("create"),
-          href: isOperator ? null : "/(tabs)/report",
-        }}
-      />
-      {/* Antes "Fichas" → ahora "Personas": el vecino registra y ve, NO escanea */}
-      <Tabs.Screen
-        name="missing"
-        options={{
-          title: "Personas",
-          tabBarIcon: tabIcon("people"),
-          href: isOperator ? null : "/(tabs)/missing",
         }}
       />
       <Tabs.Screen
         name="my-reports"
         options={{
-          title: "Mis reportes",
+          title: "Historial",
           tabBarIcon: tabIcon("list"),
           href: isOperator ? null : "/(tabs)/my-reports",
+        }}
+      />
+      <Tabs.Screen
+        name="missing"
+        options={{
+          title: "Personas",
+          tabBarIcon: tabIcon("people"),
+          href: null,
+        }}
+      />
+      {/* Accesible desde el grid, oculta en tab bar */}
+      <Tabs.Screen
+        name="report"
+        options={{
+          title: "Reportar",
+          tabBarIcon: tabIcon("create"),
+          href: null,
         }}
       />
 
