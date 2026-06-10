@@ -10,6 +10,7 @@ export default function AuthLayout() {
         contentStyle: { backgroundColor: colors.bg },
       }}
     >
+      <Stack.Screen name="login" options={{ headerShown: false }} />
       <Stack.Screen name="sign-in" options={{ headerShown: false }} />
       <Stack.Screen name="role-select" options={{ headerShown: false }} />
       <Stack.Screen name="register" options={{ headerShown: false }} />

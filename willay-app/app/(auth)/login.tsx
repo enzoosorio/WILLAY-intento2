@@ -8,7 +8,7 @@ import {
   ActivityIndicator, Alert, Image, TextInput, ScrollView,
 } from "react-native";
 import { signInAnonymously } from "firebase/auth";
-import { router, Link } from "expo-router";
+import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
 import { getFirebaseAuth } from "@/lib/firebase";
@@ -69,7 +69,7 @@ export default function LoginScreen() {
         {/* Banner superior estilo municipalidad */}
         <View style={styles.banner}>
           <Image
-            source={require("../assets/images/municipalidad.jpg")}
+            source={require("../../assets/images/municipalidad.jpg")}
             style={styles.bannerImg}
             resizeMode="cover"
           />
@@ -77,14 +77,14 @@ export default function LoginScreen() {
           <View style={styles.bannerOverlay} />
           {/* Logo encima */}
           <Image
-            source={require("../assets/images/logo_willay.png")}
+            source={require("../../assets/images/logo_willay.png")}
             style={styles.bannerLogo}
             resizeMode="contain"
           />
         </View>
 
         {/* Formulario */}
-        <View style={[styles.form, { paddingHorizontal: 24, paddingTop: 40 }]}>
+        <View style={[styles.form, { paddingHorizontal: 24, paddingTop: 60 }]}>
           <View style={styles.inputWrap}>
             <Ionicons name="mail-outline" size={20} color={colors.textMuted} />
             <TextInput
@@ -143,14 +143,15 @@ export default function LoginScreen() {
           </TouchableOpacity>
 
           {/* Registro */}
-          <Link href="/(auth)/register" asChild>
-            <TouchableOpacity style={styles.registerRow}>
-              <Text style={styles.registerTxt}>
-                ¿No tienes cuenta?{" "}
-                <Text style={styles.registerLink}>Regístrate</Text>
-              </Text>
-            </TouchableOpacity>
-          </Link>
+          <TouchableOpacity
+            style={styles.registerRow}
+            onPress={() => router.push("/register" as never)}
+          >
+            <Text style={styles.registerTxt}>
+              ¿No tienes cuenta?{" "}
+              <Text style={styles.registerLink}>Regístrate</Text>
+            </Text>
+          </TouchableOpacity>
         </View>
 
         {/* Separador */}
@@ -210,10 +211,14 @@ const styles = StyleSheet.create({
   },
   bannerLogo: {
     position: "absolute",
-    bottom: -30,
+    bottom: -50,
     alignSelf: "center",
-    width: 160,
-    height: 160,
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    overflow: "hidden",
+    borderWidth: 3,
+    borderColor: colors.brand,
   },
 
   // Form

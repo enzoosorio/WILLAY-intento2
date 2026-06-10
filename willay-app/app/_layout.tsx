@@ -39,17 +39,15 @@ export default function RootLayout() {
     const currentScreen = segments[1];
 
     if (!user) {
-      if (!inAuth) router.replace("/(auth)/sign-in");
+      if (segments[0] !== "(auth)") router.replace("/(auth)/login");
       return;
     }
 
     if (!profile?.onboardingDone) {
-      // Anónimos sin onboarding → role-select
-      // Usuarios con cuenta sin onboarding → onboarding normal
       if (user.isAnonymous) {
-        if (currentScreen !== "role-select") router.replace("/(auth)/role-select");
+        if (segments[0] !== "(tabs)") router.replace("/(tabs)");
       } else {
-        if (currentScreen !== "onboarding") router.replace("/(auth)/onboarding");
+        if (segments[1] !== "onboarding") router.replace("/(auth)/onboarding");
       }
       return;
     }

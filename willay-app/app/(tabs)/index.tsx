@@ -42,14 +42,14 @@ type Category = {
 };
 
 const CATEGORIES: Category[] = [
-  { id: "extorsion",          label: "Extorsión",   icon: "phone-portrait",   incidentType: "otro" },
-  { id: "robo",               label: "Robo",         icon: "card",             incidentType: "robo" },
-  { id: "salud",              label: "Salud",        icon: "medkit",           incidentType: "accidente" },
-  { id: "incendio",           label: "Incendio",     icon: "flame",            incidentType: "otro" },
-  { id: "rescate",            label: "Rescate",      icon: "shield",           incidentType: "otro" },
-  { id: "violencia",          label: "Violencia",    icon: "hand-left",        incidentType: "violencia_familiar" },
-  { id: "desaparecida",       label: "Desaparecida", icon: "person-circle",   incidentType: "otro" },
-  { id: "otros",              label: "Otros",        icon: "grid",             incidentType: "otro" },
+  { id: "extorsion",    label: "Extorsión",   icon: "phone-portrait", incidentType: "otro" },
+  { id: "robo",         label: "Robo",         icon: "card",           incidentType: "robo" },
+  { id: "salud",        label: "Salud",        icon: "medkit",         incidentType: "accidente" },
+  { id: "incendio",     label: "Incendio",     icon: "flame",          incidentType: "otro" },
+  { id: "rescate",      label: "Rescate",      icon: "shield",         incidentType: "otro" },
+  { id: "violencia",    label: "Violencia",    icon: "hand-left",      incidentType: "violencia_familiar" },
+  { id: "desaparecida", label: "Desaparecida", icon: "person-circle",  incidentType: "otro" },
+  { id: "otros",        label: "Otros",        icon: "grid",           incidentType: "otro" },
 ];
 
 export default function Home() {
@@ -203,8 +203,11 @@ export default function Home() {
               <Text style={styles.catLabel}>{cat.label}</Text>
             </Pressable>
           ))}
+        </View>
 
-          {/* Botones de emergencia */}
+        {/* ── Números de emergencia ── */}
+        <Text style={styles.sectionTitle}>Emergencias</Text>
+        <View style={styles.grid}>
           {EMERGENCY_CONTACTS.map((e) => (
             <Pressable
               key={e.label}
