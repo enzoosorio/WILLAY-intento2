@@ -33,19 +33,6 @@ type Option = {
 
 const OPTIONS: Option[] = [
   {
-    role: "citizen",
-    icon: "people",
-    title: "Vecino",
-    desc: "Reporta incidencias y envía alertas de pánico desde tu zona.",
-    accent: colors.brand,
-    features: [
-      "Botón de pánico rápido",
-      "Reportar incidentes con texto",
-      "Ver fichas de personas buscadas",
-      "Seguimiento de tus reportes",
-    ],
-  },
-  {
     role: "operator",
     icon: "shield-checkmark",
     title: "Administrador",
@@ -58,10 +45,23 @@ const OPTIONS: Option[] = [
       "Cambiar estado de reportes",
     ],
   },
+  {
+    role: "citizen",
+    icon: "people",
+    title: "Vecino",
+    desc: "Reporta incidencias y envía alertas de pánico desde tu zona.",
+    accent: colors.brand,
+    features: [
+      "Botón de pánico rápido",
+      "Reportar incidentes con texto",
+      "Ver fichas de personas buscadas",
+      "Seguimiento de tus reportes",
+    ],
+  },
 ];
 
 export default function RoleSelect() {
-  const [selected, setSelected] = useState<Role | null>(null);
+  const [selected, setSelected] = useState<Role | null>("operator");
   const [saving, setSaving] = useState(false);
 
   async function confirm() {
@@ -97,8 +97,8 @@ export default function RoleSelect() {
   return (
     <Screen>
       <View style={styles.hero}>
-        <Text style={styles.brand}>Willay</Text>
-        <Text style={styles.subtitle}>¿Cómo deseas ingresar?</Text>
+        <Text style={styles.brand}>Acceso demo rápido</Text>
+        <Text style={styles.subtitle}>Para pruebas en clase. No requiere registro.</Text>
       </View>
 
       <ScrollView
@@ -170,8 +170,10 @@ export default function RoleSelect() {
           ) : (
             <Text style={styles.btnText}>
               {selected
-                ? `Entrar como ${selected === "citizen" ? "Vecino" : "Administrador"}`
-                : "Selecciona un rol"}
+                ? selected === "operator"
+                  ? "Entrar como Administrador (demo)"
+                  : "Entrar como Vecino (demo)"
+                : "Seleccioná un rol"}
             </Text>
           )}
         </Pressable>

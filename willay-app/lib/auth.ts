@@ -1,114 +1,41 @@
-// Auth con Google Sign-In via expo-auth-session.
-//
-// Fallback: si los clientIds no están configurados (o estamos en emulador y
-// el usuario no quiere setear OAuth real), provee signInDev() que crea un
-// usuario anónimo en el emulador Auth — útil para iterar sin OAuth.
-
-import * as Google from "expo-auth-session/providers/google";
-import * as WebBrowser from "expo-web-browser";
-
-import { useEffect } from "react";
-
 import {
-  GoogleAuthProvider,
-  signInWithCredential,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  updateProfile,
   signInAnonymously,
   signOut as fbSignOut,
   onAuthStateChanged,
   type User,
 } from "firebase/auth";
 
-import {
-  env,
-  hasGoogleAuth,
-} from "./env";
-
 import { getFirebaseAuth } from "./firebase";
 
-WebBrowser.maybeCompleteAuthSession();
+export async function signInWithEmail(email: string, password: string): Promise<User> {
+  const cred = await signInWithEmailAndPassword(getFirebaseAuth(), email, password);
+  return cred.user;
+}
 
-export function useGoogleAuth() {
-  const [
-    request,
-    response,
-    promptAsync,
-  ] = Google.useIdTokenAuthRequest({
-    webClientId:
-      env.googleAuth.webClientId,
+export async function registerWithEmail(
+  email: string,
+  password: string,
+  displayName: string
+): Promise<User> {
+  const cred = await createUserWithEmailAndPassword(getFirebaseAuth(), email, password);
+  await updateProfile(cred.user, { displayName });
+  return cred.user;
+}
 
-    iosClientId:
-      env.googleAuth.iosClientId,
-
-    androidClientId:
-      env.googleAuth.androidClientId,
-  });
-
-  useEffect(() => {
-    if (
-      response?.type === "success"
-    ) {
-      const idToken =
-        response.params["id_token"];
-
-      if (idToken) {
-        const cred =
-          GoogleAuthProvider.credential(
-            idToken
-          );
-
-        signInWithCredential(
-          getFirebaseAuth(),
-          cred
-        ).catch((e) =>
-          console.error(
-            "[auth] signInWithCredential",
-            e
-          )
-        );
-      }
-    }
-  }, [response]);
-
-  return {
-    /** true cuando hay clientIds configurados Y el AuthRequest está listo. */
-    ready:
-      hasGoogleAuth() &&
-      !!request,
-
-    /** true si no hay clientIds — la UI puede mostrar un placeholder. */
-    needsClientIds:
-      !hasGoogleAuth(),
-
-    signIn: () =>
-      promptAsync(),
-  };
+export function signInAnonymouslyApp(): Promise<User> {
+  return signInAnonymously(getFirebaseAuth()).then((c) => c.user);
 }
 
 /** Login anónimo en emulador */
 export function signInDev(): Promise<User> {
-  return signInAnonymously(
-    getFirebaseAuth()
-  ).then((c) => c.user);
+  return signInAnonymously(getFirebaseAuth()).then((c) => c.user);
 }
 
-/** Login anónimo para cambiar rol */
-export function signInAnonymouslyApp(): Promise<User> {
-  return signInAnonymously(
-    getFirebaseAuth()
-  ).then((c) => c.user);
-}
+export const signOut = (): Promise<void> => fbSignOut(getFirebaseAuth());
 
-/** Logout */
-export const signOut =
-  (): Promise<void> =>
-    fbSignOut(getFirebaseAuth());
-
-/** Listener auth */
-export function onAuth(
-  cb: (u: User | null) => void
-) {
-  return onAuthStateChanged(
-    getFirebaseAuth(),
-    cb
-  );
+export function onAuth(cb: (u: User | null) => void) {
+  return onAuthStateChanged(getFirebaseAuth(), cb);
 }

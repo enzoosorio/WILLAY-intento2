@@ -127,4 +127,30 @@ Formato corto. Cada ADR: contexto, opciones consideradas, decisión, consecuenci
 
 **Contexto:** sin backend proxy, las reglas son la frontera.
 **Decisión:** las reglas se versionan en `firestore.rules`, se prueban con el emulador y se incluyen como artefacto de entrega.
+
+---
+
+## ADR-011 — Email/Password Auth en lugar de Google Sign-In  *(supercede ADR-007)*
+
+**Fecha:** 2026-06-09 | **Estado:** Aceptado
+
+**Contexto:** Google Sign-In requiere SHA-1/SHA-256 fingerprints, credenciales OAuth configuradas en Firebase Console y build nativo EAS. En el entorno de desarrollo actual (emulador Android sin keystore de debug correctamente registrado, Expo Go), el flujo OAuth falla. Para el MVP universitario (demo en aula, ~30 cuentas reales), la fricción de configuración supera el beneficio.
+
+**Opciones evaluadas:**
+- A: Mantener Google Sign-In — requiere resolver SHA keys + rebuild EAS. Tiempo estimado: 1-2 días. Riesgo alto en entorno universitario.
+- B: **Email/Password con Firebase Auth** — funciona con cualquier APK sin configuración OAuth adicional. Registro in-app con UI propia.
+- C: Supabase Auth — probado y funciona, pero introduce un segundo proveedor de backend solo para auth. Overhead de integración innecesario.
+- D: Anónimo puro — sin identidad real, impide trazabilidad de reportes por usuario.
+
+**Decisión:** B — Firebase Auth Email/Password. El acceso anónimo se conserva como "Acceso demo (Administrador)" para demo rápida sin registro. Operadores reales se distinguen por código de acceso hardcodeado en el cliente (`serenazgo2026`).
+
+**Consecuencias:**
+- `google-sign-in.ts` y `google-sign-in.native.ts` eliminados del proyecto.
+- `expo-auth-session` ya no se importa (paquete puede desinstalarse en limpieza futura).
+- `UserDoc` extiende con campo `phone?: string` capturado en registro.
+- Nueva pantalla `app/(auth)/register.tsx` con selección de rol + formulario.
+- (+) Funciona en Expo Go, emulador y APK de producción sin configuración extra.
+- (+) Datos del usuario controlados (nombre, rol, teléfono).
+- (-) Sin SSO; usuario debe recordar credenciales.
+- (-) Sin avatar automático (era gratuito con Google).
 **Consecuencias:** lectura/escritura siempre pasa por reglas explícitas; ningún campo "confiable" lo escribe el cliente (priority, status: solo Cloud Functions). Ver `04-data-model.md` y `07-security-privacy.md`.

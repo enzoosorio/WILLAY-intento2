@@ -8,11 +8,9 @@ import "react-native-reanimated";
 import { bootstrapFirebase } from "@/lib/firebase";
 import { ensureUserDoc, useAuthUser, useUserDoc } from "@/lib/session";
 import { registerForPushAsync } from "@/lib/push";
-import { configureGoogleSignIn } from "@/lib/google-sign-in";
 import { colors } from "@/theme/colors";
 
 bootstrapFirebase();
-configureGoogleSignIn(); // Inicializa el SDK nativo de Google Sign-In (no-op en Expo Go)
 
 export const unstable_settings = { anchor: "(tabs)" };
 

@@ -11,14 +11,8 @@ type FirebaseExtra = {
   messagingSenderId: string;
   appId: string;
 };
-type GoogleAuthExtra = {
-  webClientId: string;
-  iosClientId: string;
-  androidClientId: string;
-};
 type Extra = {
   firebase: FirebaseExtra;
-  googleAuth: GoogleAuthExtra;
   region: string;
   useEmulators: string;
   emulatorHost: string;
@@ -30,7 +24,6 @@ const raw = (Constants.expoConfig?.extra ?? {}) as Partial<Extra>;
 
 export const env = {
   firebase: raw.firebase ?? ({} as FirebaseExtra),
-  googleAuth: raw.googleAuth ?? ({ webClientId: "", iosClientId: "", androidClientId: "" } as GoogleAuthExtra),
   region: raw.region || "southamerica-east1",
   useEmulators: raw.useEmulators === "true",
   // Android emu: 10.0.2.2 mapea al localhost del host. iOS sim/web: localhost OK.
@@ -43,7 +36,3 @@ export const env = {
   useFacenet: raw.useFacenet === "true",
   easProjectId: raw.eas?.projectId || "",
 } as const;
-
-export function hasGoogleAuth(): boolean {
-  return !!(env.googleAuth.webClientId || env.googleAuth.iosClientId || env.googleAuth.androidClientId);
-}

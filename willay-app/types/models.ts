@@ -25,6 +25,7 @@ export type NotificationKind = "report_status" | "nearby_p1" | "missing_match";
 export interface UserDoc {
   displayName: string;
   email?: string;
+  phone?: string;
   zone: Zone | null;
   role: Role;
   geohash?: string;

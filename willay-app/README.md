@@ -80,7 +80,7 @@ willay-app/
 ├── lib/
 │   ├── env.ts                   ← acceso tipado a Constants.extra
 │   ├── firebase.ts              ← singletons + emulator wiring
-│   ├── auth.ts                  ← useGoogleAuth + signInDev (anonymous)
+│   ├── auth.ts                  ← signInWithEmail, registerWithEmail, signInAnonymouslyApp
 │   ├── session.ts               ← useAuthUser, useUserDoc, ensureUserDoc
 │   ├── collections.ts           ← refs + queries tipadas
 │   ├── functions.ts             ← wrappers de callables
