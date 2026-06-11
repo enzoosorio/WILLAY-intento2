@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
 
 initialize_app()
 
-REGION = options.SupportedRegion.SOUTH_AMERICA_EAST1
+REGION = options.SupportedRegion.SOUTHAMERICA_EAST1
 
 # ──────────────────────────────────────────────────────────────────────────────
 # HEALTH CHECK
@@ -441,3 +441,103 @@ def classify_text(req: https_fn.CallableRequest) -> dict:
         return {"priority": "P3", "reason": "gemini:error", "usedGemini": True}
 
 
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# RESUMEN IA — summarize_user_reports (callable)
+# Cuando un vecino tiene 3+ reportes activos, Gemini los resume
+# para el operador en un mensaje conciso.
+# ──────────────────────────────────────────────────────────────────────────────
+
+@https_fn.on_call(region=REGION)
+def summarize_user_reports(req: https_fn.CallableRequest) -> dict:
+    """
+    Recibe un authorUid y devuelve un resumen IA de sus reportes activos.
+    Solo accesible por operadores.
+    """
+    if not req.auth:
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.UNAUTHENTICATED,
+            message="Auth requerida.",
+        )
+
+    uid = req.auth.uid
+    data = req.data or {}
+    author_uid = data.get("authorUid")
+
+    if not author_uid:
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.INVALID_ARGUMENT,
+            message="authorUid requerido.",
+        )
+
+    db = fs.client()
+
+    # Verificar que el solicitante es operador
+    user_snap = db.collection("users").document(uid).get()
+    if not user_snap.exists or (user_snap.to_dict() or {}).get("role") != "operator":
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.PERMISSION_DENIED,
+            message="Solo operadores pueden solicitar resúmenes.",
+        )
+
+    # Obtener reportes activos del vecino (últimas 24h)
+    cutoff = datetime.datetime.utcnow() - datetime.timedelta(hours=24)
+    reports_query = (
+        db.collection("reports")
+        .where("authorUid", "==", author_uid)
+        .where("status", "in", ["received", "attending"])
+        .limit(10)
+    )
+    reports = [r.to_dict() for r in reports_query.stream()]
+
+    if not reports:
+        return {"summary": "Este vecino no tiene reportes activos.", "count": 0, "usedGemini": False}
+
+    if len(reports) < 3:
+        return {
+            "summary": f"El vecino tiene {len(reports)} reporte(s) activo(s). No se requiere resumen.",
+            "count": len(reports),
+            "usedGemini": False,
+        }
+
+    # Construir texto para Gemini
+    texts = []
+    for i, r in enumerate(reports, 1):
+        t = r.get("text", "")
+        p = r.get("priority", "P3")
+        kind = "Pánico" if r.get("type") == "panic" else r.get("incidentType", "otro")
+        texts.append(f"{i}. [{p}] {kind}: {t or '(sin descripción)'}")
+
+    reports_text = "\n".join(texts)
+
+    api_key = os.environ.get("GEMINI_API_KEY", "")
+    if not api_key:
+        return {
+            "summary": f"El vecino tiene {len(reports)} reportes activos. Configura GEMINI_API_KEY para resúmenes IA.",
+            "count": len(reports),
+            "usedGemini": False,
+        }
+
+    try:
+        import google.generativeai as genai
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel("gemini-1.5-flash")
+        prompt = (
+            "Eres un asistente de seguridad ciudadana. "
+            "Un vecino ha enviado múltiples reportes. "
+            "Resume en 2-3 oraciones concisas qué está pasando y si hay un patrón preocupante. "
+            "Sé directo y profesional, sin rodeos.\n\n"
+            f"Reportes del vecino:\n{reports_text}\n\n"
+            "Responde SOLO el resumen, sin introducción ni títulos."
+        )
+        response = model.generate_content(prompt, request_options={"timeout": 6})
+        summary = (response.text or "").strip()
+        return {"summary": summary, "count": len(reports), "usedGemini": True}
+    except Exception as e:
+        logger.warning("summarize_user_reports gemini error: %s", e)
+        return {
+            "summary": f"El vecino tiene {len(reports)} reportes activos recientes. Revisar manualmente.",
+            "count": len(reports),
+            "usedGemini": False,
+        }

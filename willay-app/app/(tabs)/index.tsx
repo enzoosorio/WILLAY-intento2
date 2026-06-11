@@ -54,7 +54,7 @@ const CATEGORIES: Category[] = [
 
 export default function Home() {
   const { user } = useAuthUser();
-  const { data: profile } = useUserDoc(user?.uid);
+  const { data: profile, loading: profileLoading } = useUserDoc(user?.uid);
   const auth = getFirebaseAuth();
   const router = useRouter();
 
@@ -70,6 +70,8 @@ export default function Home() {
     if (timer.current) clearTimeout(timer.current);
     if (tick.current) clearInterval(tick.current);
   }, []);
+
+  if (profileLoading) return null;
 
   if (profile?.role === "operator") {
     return <Redirect href="/(tabs)/operator" />;
@@ -109,6 +111,7 @@ export default function Home() {
       const loc = await getCurrentWithGeohash();
       await addDoc(reportsCol(), {
         authorUid: currentUser.uid,
+        authorName: profile?.displayName ?? "Vecino anónimo",
         type: "panic",
         location: loc.geopoint,
         geohash: loc.geohash,

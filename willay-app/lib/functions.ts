@@ -24,7 +24,17 @@ export interface PanicEchoOutput {
 export const panicEcho = (): HttpsCallable<Record<string, never>, PanicEchoOutput> =>
   httpsCallable(getFirebaseFunctions(), "panic_echo");
 
-// ─── mark_report_status ───────────────────────────────────────────────────
+// ─── summarize_user_reports ───────────────────────────────────────────────
+export interface SummarizeReportsInput {
+  authorUid: string;
+}
+export interface SummarizeReportsOutput {
+  summary: string;
+  count: number;
+  usedGemini: boolean;
+}
+export const summarizeUserReports = (): HttpsCallable<SummarizeReportsInput, SummarizeReportsOutput> =>
+  httpsCallable(getFirebaseFunctions(), "summarize_user_reports");
 export interface MarkReportStatusInput {
   reportId: string;
   status: Extract<ReportStatus, "attending" | "closed" | "dismissed">;

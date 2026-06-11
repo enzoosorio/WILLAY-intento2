@@ -1,0 +1,54 @@
+[2026-06-11T15:18:30.629Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[2026-06-11T15:18:30.632Z] > authorizing via signed-in user (oscarmiguel.salazar@unmsm.edu.pe)
+[2026-06-11T15:18:30.633Z] [iam] checking project willay-tas-17721 for permissions ["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]
+[2026-06-11T15:18:30.635Z] Checked if tokens are valid: true, expires at: 1781194320135
+[2026-06-11T15:18:30.636Z] Checked if tokens are valid: true, expires at: 1781194320135
+[2026-06-11T15:18:30.638Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/willay-tas-17721:testIamPermissions [none]
+[2026-06-11T15:18:30.639Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/willay-tas-17721:testIamPermissions  x-goog-user-project=willay-tas-17721
+[2026-06-11T15:18:30.639Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/willay-tas-17721:testIamPermissions {"permissions":["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]}
+[2026-06-11T15:18:31.909Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/willay-tas-17721:testIamPermissions 200
+[2026-06-11T15:18:31.910Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/willay-tas-17721:testIamPermissions {"permissions":["cloudfunctions.functions.create","cloudfunctions.functions.delete","cloudfunctions.functions.get","cloudfunctions.functions.list","cloudfunctions.functions.update","cloudfunctions.operations.get","firebase.projects.get"]}
+[2026-06-11T15:18:31.910Z] Checked if tokens are valid: true, expires at: 1781194320135
+[2026-06-11T15:18:31.911Z] Checked if tokens are valid: true, expires at: 1781194320135
+[2026-06-11T15:18:31.911Z] >>> [apiv2][query] POST https://iam.googleapis.com/v1/projects/willay-tas-17721/serviceAccounts/willay-tas-17721@appspot.gserviceaccount.com:testIamPermissions [none]
+[2026-06-11T15:18:31.911Z] >>> [apiv2][body] POST https://iam.googleapis.com/v1/projects/willay-tas-17721/serviceAccounts/willay-tas-17721@appspot.gserviceaccount.com:testIamPermissions {"permissions":["iam.serviceAccounts.actAs"]}
+[2026-06-11T15:18:33.027Z] <<< [apiv2][status] POST https://iam.googleapis.com/v1/projects/willay-tas-17721/serviceAccounts/willay-tas-17721@appspot.gserviceaccount.com:testIamPermissions 200
+[2026-06-11T15:18:33.027Z] <<< [apiv2][body] POST https://iam.googleapis.com/v1/projects/willay-tas-17721/serviceAccounts/willay-tas-17721@appspot.gserviceaccount.com:testIamPermissions {"permissions":["iam.serviceAccounts.actAs"]}
+
+=== Deploying to 'willay-tas-17721'...
+
+i  deploying functions 
+[2026-06-11T15:18:33.035Z] Checked if tokens are valid: true, expires at: 1781194320135
+[2026-06-11T15:18:33.035Z] Checked if tokens are valid: true, expires at: 1781194320135
+[2026-06-11T15:18:33.036Z] >>> [apiv2][query] GET https://cloudresourcemanager.googleapis.com/v1/projects/willay-tas-17721 [none]
+[2026-06-11T15:18:33.317Z] <<< [apiv2][status] GET https://cloudresourcemanager.googleapis.com/v1/projects/willay-tas-17721 200
+[2026-06-11T15:18:33.318Z] <<< [apiv2][body] GET https://cloudresourcemanager.googleapis.com/v1/projects/willay-tas-17721 {"projectNumber":"936660231342","projectId":"willay-tas-17721","lifecycleState":"ACTIVE","name":"willay-tas","labels":{"firebase":"enabled","firebase-core":"disabled"},"createTime":"2026-05-28T14:19:34.758Z","parent":{"type":"organization","id":"792420786086"}}
+i  functions: preparing codebase default for deployment 
+i  functions: ensuring required API cloudfunctions.googleapis.com is enabled... 
+i  functions: ensuring required API cloudbuild.googleapis.com is enabled... 
+i  artifactregistry: ensuring required API artifactregistry.googleapis.com is enabled... 
+[2026-06-11T15:18:33.323Z] Checked if tokens are valid: true, expires at: 1781194320135
+[2026-06-11T15:18:33.323Z] Checked if tokens are valid: true, expires at: 1781194320135
+[2026-06-11T15:18:33.323Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/willay-tas-17721/adminSdkConfig [none]
+[2026-06-11T15:18:33.853Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/willay-tas-17721/adminSdkConfig 200
+[2026-06-11T15:18:33.853Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/willay-tas-17721/adminSdkConfig {"projectId":"willay-tas-17721","storageBucket":"willay-tas-17721.firebasestorage.app"}
+[2026-06-11T15:18:33.854Z] Checked if tokens are valid: true, expires at: 1781194320135
+[2026-06-11T15:18:33.854Z] Checked if tokens are valid: true, expires at: 1781194320135
+[2026-06-11T15:18:33.854Z] >>> [apiv2][query] GET https://runtimeconfig.googleapis.com/v1beta1/projects/willay-tas-17721/configs [none]
+[2026-06-11T15:18:34.266Z] <<< [apiv2][status] GET https://runtimeconfig.googleapis.com/v1beta1/projects/willay-tas-17721/configs 200
+[2026-06-11T15:18:34.267Z] <<< [apiv2][body] GET https://runtimeconfig.googleapis.com/v1beta1/projects/willay-tas-17721/configs {}
+[2026-06-11T15:18:34.272Z] Customer code is not Node
+[2026-06-11T15:18:34.273Z] Validating python source
+[2026-06-11T15:18:34.274Z] Building python source
+i  functions: Loading and analyzing source code for codebase default to determine what to deploy 
+[2026-06-11T15:18:34.278Z] Could not find functions.yaml. Must use http discovery
+[2026-06-11T15:18:34.372Z] Running command with virtualenv: command="C:\Users\Lenovo\Desktop\willay definitivo\WILLAY-intento2\functions\venv\Scripts\activate.bat", args=["","&&","python.exe","-c","\"import firebase_functions; import os; print(os.path.dirname(firebase_functions.__file__))\""]
+[2026-06-11T15:18:34.522Z] stderr: El sistema no puede encontrar la ruta especificada.
+
+[2026-06-11T15:18:34.543Z] Error: spawn "C:\Users\Lenovo\Desktop\willay definitivo\WILLAY-intento2\functions\venv\Scripts\activate.bat" ENOENT
+    at notFoundError (C:\Users\Lenovo\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\cross-spawn\lib\enoent.js:6:26)
+    at verifyENOENT (C:\Users\Lenovo\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\cross-spawn\lib\enoent.js:40:16)
+    at cp.emit (C:\Users\Lenovo\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\cross-spawn\lib\enoent.js:27:25)
+    at ChildProcess._handle.onexit (node:internal/child_process:293:12)
+
+Error: An unexpected error has occurred.

@@ -24,7 +24,7 @@ import { Screen } from "@/components/ui/Screen";
 import { reportsCol } from "@/lib/collections";
 import { getCurrentWithGeohash } from "@/lib/location";
 import { uploadReportPhoto } from "@/lib/storage";
-import { useAuthUser } from "@/lib/session";
+import { useAuthUser, useUserDoc } from "@/lib/session";
 import { colors } from "@/theme/colors";
 import type { IncidentType } from "@/types/models";
 
@@ -50,17 +50,21 @@ function getIncident(id?: string) {
 
 export default function ReportScreen() {
   const { user } = useAuthUser();
+  const { data: profile } = useUserDoc(user?.uid);
   const router = useRouter();
   const params = useLocalSearchParams<{ incidentType?: string; categoryLabel?: string }>();
 
   const initial = getIncident(params.incidentType);
+  const categoryLabel = params.categoryLabel; // label original de la categoría tocada
   const [incidentType, setIncidentType] = useState<IncidentType | null>(initial?.id ?? null);
   const [text, setText] = useState("");
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
-  const [showTypes, setShowTypes] = useState(!initial); // si viene preseleccionado, ocultar el picker
+  const [showTypes, setShowTypes] = useState(!initial);
 
   const selected = getIncident(incidentType ?? undefined);
+  // Usar el label original de la categoría si viene del home
+  const displayLabel = categoryLabel ?? selected?.label ?? null;
 
   // ── Foto ──────────────────────────────────────────────────────────
   async function takePhoto() {
@@ -115,8 +119,10 @@ export default function ReportScreen() {
 
       await setDoc(ref, {
         authorUid: user.uid,
+        authorName: profile?.displayName ?? "Vecino anónimo",
         type: "text",
         incidentType,
+        categoryLabel: displayLabel ?? incidentType,
         text: trimmed,
         ...(photoUrl ? { photoUrl } : {}),
         location: loc.geopoint,
@@ -150,7 +156,7 @@ export default function ReportScreen() {
         <View style={{ flex: 1 }}>
           <Text style={styles.headerSub}>Nuevo Reporte</Text>
           <Text style={styles.headerTitle}>
-            {selected ? `Alerta de ${selected.label}` : "Selecciona un tipo"}
+            {displayLabel ? `Alerta de ${displayLabel}` : "Selecciona un tipo"}
           </Text>
         </View>
         {selected && (
