@@ -48,15 +48,7 @@ export default function LoginScreen() {
   }
 
   async function handleGuestLogin() {
-    setLoadingGuest(true);
-    try {
-      await signInAnonymously(auth);
-      router.replace("/(tabs)");
-    } catch {
-      Alert.alert("Error", "No se pudo iniciar sesión.");
-    } finally {
-      setLoadingGuest(false);
-    }
+    router.push("/(auth)/role-select" as never);
   }
 
   return (
@@ -180,8 +172,17 @@ export default function LoginScreen() {
         </TouchableOpacity>
         </View>
 
-        <TouchableOpacity onPress={() => router.push("/privacy")} style={{ marginTop: 16 }}>
+        <TouchableOpacity onPress={() => router.push("/(auth)/privacy" as never)} style={{ marginTop: 8 }}>
           <Text style={styles.privacy}>Política de privacidad</Text>
+        </TouchableOpacity>
+
+        {/* Acceso operador discreto */}
+        <TouchableOpacity
+          style={styles.operatorBtn}
+          onPress={() => router.push("/(auth)/role-select" as never)}
+        >
+          <Ionicons name="shield" size={14} color={colors.textMuted} />
+          <Text style={styles.operatorTxt}>Acceso Serenazgo / Operador</Text>
         </TouchableOpacity>
 
         <View style={{ height: 32 }} />
@@ -283,4 +284,9 @@ const styles = StyleSheet.create({
   demoBtnTxt: { color: colors.textMuted, fontSize: 13 },
 
   privacy: { color: colors.textMuted, fontSize: 12, textAlign: "center" },
+  operatorBtn: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center",
+    gap: 6, paddingVertical: 12, marginTop: 4,
+  },
+  operatorTxt: { color: colors.textMuted, fontSize: 12 },
 });

@@ -1,12 +1,11 @@
+// ════════════════════════════════════════════════════════════════════
+// UBICACIÓN: willay-app/app/(tabs)/operator.tsx
+// Bandeja del Operador — rediseño profesional
+// ════════════════════════════════════════════════════════════════════
 import { useEffect, useState } from "react";
 import {
-  Alert,
-  FlatList,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-  ActivityIndicator,
+  Alert, FlatList, Pressable, StyleSheet,
+  Text, View, ActivityIndicator, TouchableOpacity,
 } from "react-native";
 import { onSnapshot, type QueryDocumentSnapshot } from "firebase/firestore";
 import { Redirect, useRouter } from "expo-router";
@@ -20,69 +19,53 @@ import { colors } from "@/theme/colors";
 import type { IncidentType, ReportDoc, ReportStatus } from "@/types/models";
 
 type Row = { id: string; data: ReportDoc };
+type Filter = "todos" | "P1" | "P2";
 
 const STATUS_LABEL: Record<string, string> = {
-  received: "Recibido",
+  received:  "Recibido",
   attending: "En atención",
-  closed: "Cerrado",
+  closed:    "Cerrado",
   dismissed: "Descartado",
 };
-
 const STATUS_COLOR: Record<string, string> = {
-  received: colors.warning,
+  received:  colors.warning,
   attending: colors.brand,
-  closed: colors.success,
+  closed:    colors.success,
   dismissed: colors.textMuted,
 };
 
-// ── Etiqueta, ícono y color por tipo de incidente ──
-const INCIDENT_META: Record<
-  IncidentType,
-  { label: string; icon: keyof typeof Ionicons.glyphMap; color: string }
-> = {
-  robo: { label: "Robo", icon: "bag-remove", color: "#FF5C5C" },
-  asalto: { label: "Asalto", icon: "alert-circle", color: "#FF8A3D" },
-  violencia_familiar: { label: "Violencia familiar", icon: "people", color: "#E0457B" },
-  accidente: { label: "Accidente", icon: "car-sport", color: "#F5A524" },
-  persona_sospechosa: { label: "Persona sospechosa", icon: "eye", color: "#8B5CF6" },
-  vandalismo: { label: "Vandalismo", icon: "hammer", color: "#3DA5D9" },
-  otro: { label: "Otro", icon: "ellipsis-horizontal-circle", color: "#A1A8B8" },
+const INCIDENT_META: Record<IncidentType, { label: string; icon: keyof typeof Ionicons.glyphMap; color: string }> = {
+  robo:               { label: "Robo",               icon: "card",          color: "#FF5C5C" },
+  asalto:             { label: "Asalto",             icon: "alert-circle",  color: "#FF8A3D" },
+  violencia_familiar: { label: "Violencia familiar", icon: "hand-left",     color: "#E0457B" },
+  accidente:          { label: "Accidente / Salud",  icon: "medkit",        color: "#F5A524" },
+  persona_sospechosa: { label: "Pers. sospechosa",   icon: "eye",           color: "#8B5CF6" },
+  vandalismo:         { label: "Vandalismo",          icon: "flame",         color: "#FF6B35" },
+  otro:               { label: "Otro",                icon: "grid",          color: "#A1A8B8" },
 };
+
+function priorityColor(p?: string) {
+  if (p === "P1") return colors.danger;
+  if (p === "P2") return colors.warning;
+  return colors.textMuted;
+}
 
 export default function Operator() {
   const { user } = useAuthUser();
   const { data: profile, loading } = useUserDoc(user?.uid);
   const router = useRouter();
-  const [rows, setRows] = useState<Row[]>([]);
+  const [rows,   setRows]   = useState<Row[]>([]);
+  const [filter, setFilter] = useState<Filter>("todos");
   const [busyId, setBusyId] = useState<string | null>(null);
 
-  if (!loading && profile && profile.role !== "operator") {
-    return <Redirect href="/(tabs)" />;
-  }
-
   useEffect(() => {
-    return onSnapshot(activeReportsQuery(), (snap) =>
-      setRows(
-        snap.docs.map((d: QueryDocumentSnapshot<ReportDoc>) => ({
-          id: d.id,
-          data: d.data(),
-        })),
-      ),
+    return onSnapshot(activeReportsQuery(), (snap: import("firebase/firestore").QuerySnapshot) =>
+      setRows(snap.docs.map((d: QueryDocumentSnapshot<ReportDoc>) => ({ id: d.id, data: d.data() })))
     );
   }, []);
 
-  async function changeStatus(
-    id: string,
-    status: Extract<ReportStatus, "attending" | "closed" | "dismissed">,
-  ) {
-    setBusyId(id);
-    try {
-      await markReportStatus()({ reportId: id, status });
-    } catch (e) {
-      Alert.alert("Error", (e as Error).message);
-    } finally {
-      setBusyId(null);
-    }
+  if (!loading && profile && profile.role !== "operator") {
+    return <Redirect href="/(tabs)" />;
   }
 
   if (loading) {
@@ -93,121 +76,183 @@ export default function Operator() {
     );
   }
 
+  const filtered = rows.filter((r) => filter === "todos" || r.data.priority === filter);
+  const countP1  = rows.filter((r) => r.data.priority === "P1").length;
+  const countP2  = rows.filter((r) => r.data.priority === "P2").length;
+
+  async function changeStatus(id: string, status: Extract<ReportStatus, "attending" | "closed" | "dismissed">) {
+    setBusyId(id);
+    try {
+      await markReportStatus()({ reportId: id, status });
+    } catch (e) {
+      Alert.alert("Error", (e as Error).message);
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   return (
     <Screen padded={false}>
       <FlatList
-        data={rows}
+        data={filtered}
         keyExtractor={(r) => r.id}
         contentContainerStyle={styles.list}
         ListHeaderComponent={
-          <View style={styles.header}>
-            <View style={styles.headerRow}>
-              <Ionicons name="shield-checkmark" size={22} color={colors.warning} />
-              <Text style={styles.h1}>Panel de Control</Text>
+          <View>
+            {/* Header */}
+            <View style={styles.header}>
+              <View>
+                <Text style={styles.headerTitle}>Panel de Control</Text>
+                <Text style={styles.headerSub}>{rows.length} alertas activas</Text>
+              </View>
+              <View style={styles.roleBadge}>
+                <Ionicons name="shield-checkmark" size={14} color={colors.warning} />
+                <Text style={styles.roleTxt}>SERENAZGO</Text>
+              </View>
             </View>
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>{rows.length} activas</Text>
+
+            {/* Stats rápidos */}
+            <View style={styles.statsRow}>
+              <View style={[styles.statCard, { borderColor: colors.danger }]}>
+                <Text style={[styles.statNum, { color: colors.danger }]}>{countP1}</Text>
+                <Text style={styles.statLabel}>P1 Urgente</Text>
+              </View>
+              <View style={[styles.statCard, { borderColor: colors.warning }]}>
+                <Text style={[styles.statNum, { color: colors.warning }]}>{countP2}</Text>
+                <Text style={styles.statLabel}>P2 Media</Text>
+              </View>
+              <View style={[styles.statCard, { borderColor: colors.border }]}>
+                <Text style={[styles.statNum, { color: colors.text }]}>{rows.length}</Text>
+                <Text style={styles.statLabel}>Total</Text>
+              </View>
+            </View>
+
+            {/* Filtros */}
+            <View style={styles.filterRow}>
+              {(["todos", "P1", "P2"] as Filter[]).map((f) => (
+                <TouchableOpacity
+                  key={f}
+                  onPress={() => setFilter(f)}
+                  style={[styles.filterBtn, filter === f && styles.filterBtnActive]}
+                >
+                  <Text style={[styles.filterTxt, filter === f && styles.filterTxtActive]}>
+                    {f === "todos" ? "Todos" : f}
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </View>
           </View>
         }
         ListEmptyComponent={
           <View style={styles.emptyWrap}>
-            <Ionicons name="checkmark-circle" size={48} color={colors.success} />
-            <Text style={styles.empty}>Sin alertas activas</Text>
-            <Text style={styles.emptySub}>La comunidad está tranquila por ahora.</Text>
+            <Ionicons name="checkmark-circle" size={52} color={colors.success} />
+            <Text style={styles.emptyTxt}>Sin alertas activas</Text>
+            <Text style={styles.emptySub}>La comunidad está tranquila.</Text>
           </View>
         }
         renderItem={({ item }) => {
-          // Metadatos del tipo de incidente (si existe)
-          const meta = item.data.incidentType
-            ? INCIDENT_META[item.data.incidentType]
-            : null;
+          const meta     = item.data.incidentType ? INCIDENT_META[item.data.incidentType] : null;
+          const pColor   = priorityColor(item.data.priority);
+          const isPanic  = item.data.type === "panic";
+          const isP1     = item.data.priority === "P1";
 
           return (
-            <View style={styles.card}>
-              {/* Zona clickeable: abre el detalle del reporte */}
-              <Pressable
-                onPress={() =>
-                  router.push({ pathname: "/report/[id]", params: { id: item.id } })
-                }
-              >
-                <View style={styles.cardHead}>
-                  <View style={[styles.pill, { backgroundColor: priorityBg(item.data.priority) }]}>
-                    <Text style={styles.pillText}>{item.data.priority ?? "—"}</Text>
+            <Pressable
+              style={[styles.card, isP1 && styles.cardP1]}
+              onPress={() => router.push({ pathname: "/report/[id]", params: { id: item.id } })}
+            >
+              {/* Barra lateral de prioridad */}
+              <View style={[styles.priorityBar, { backgroundColor: pColor }]} />
+
+              <View style={styles.cardContent}>
+                {/* Fila superior */}
+                <View style={styles.cardTop}>
+                  {/* Badge prioridad */}
+                  <View style={[styles.priorityBadge, { backgroundColor: pColor + "22", borderColor: pColor }]}>
+                    <Text style={[styles.priorityTxt, { color: pColor }]}>{item.data.priority ?? "—"}</Text>
                   </View>
-                  <Text style={styles.type}>
-                    {item.data.type === "panic" ? "🚨 Pánico" : "📝 Reporte"}
+
+                  {/* Tipo */}
+                  <Text style={styles.cardType}>
+                    {isPanic ? "🚨 Alerta de Pánico" : `📝 ${meta?.label ?? "Reporte"}`}
                   </Text>
-                  <View
-                    style={[
-                      styles.statusBadge,
-                      { borderColor: STATUS_COLOR[item.data.status] ?? colors.border },
-                    ]}
-                  >
-                    <Text style={[styles.statusText, { color: STATUS_COLOR[item.data.status] }]}>
-                      {STATUS_LABEL[item.data.status] ?? item.data.status}
+
+                  {/* Estado */}
+                  <View style={[styles.statusBadge, { borderColor: STATUS_COLOR[item.data.status] }]}>
+                    <Text style={[styles.statusTxt, { color: STATUS_COLOR[item.data.status] }]}>
+                      {STATUS_LABEL[item.data.status]}
                     </Text>
                   </View>
                 </View>
 
-                {/* ── Chip del tipo de incidente ── */}
+                {/* Chip de incidente */}
                 {meta && (
-                  <View style={[styles.typeChip, { borderColor: meta.color }]}>
+                  <View style={[styles.incidentChip, { borderColor: meta.color + "66" }]}>
                     <Ionicons name={meta.icon} size={13} color={meta.color} />
-                    <Text style={[styles.typeChipText, { color: meta.color }]}>
-                      {meta.label}
-                    </Text>
+                    <Text style={[styles.incidentChipTxt, { color: meta.color }]}>{meta.label}</Text>
                   </View>
                 )}
 
-                {item.data.text && <Text style={styles.reportText}>{item.data.text}</Text>}
+                {/* Descripción */}
+                {item.data.text && (
+                  <Text style={styles.cardText} numberOfLines={2}>{item.data.text}</Text>
+                )}
 
-                {/* ── Indicador de foto + flecha "ver detalle" ── */}
+                {/* Meta fila */}
                 <View style={styles.metaRow}>
                   {item.data.photoUrl ? (
                     <View style={styles.photoTag}>
-                      <Ionicons name="image" size={13} color={colors.brand} />
-                      <Text style={styles.photoTagText}>Foto adjunta</Text>
+                      <Ionicons name="image" size={12} color={colors.brand} />
+                      <Text style={styles.photoTagTxt}>Foto adjunta</Text>
                     </View>
-                  ) : (
-                    <View />
-                  )}
+                  ) : <View />}
                   <View style={styles.detailHint}>
-                    <Text style={styles.detailHintText}>Ver detalle</Text>
-                    <Ionicons name="chevron-forward" size={14} color={colors.textMuted} />
+                    <Text style={styles.detailHintTxt}>Ver detalle</Text>
+                    <Ionicons name="chevron-forward" size={13} color={colors.textMuted} />
                   </View>
                 </View>
-              </Pressable>
 
-              <View style={styles.actions}>
-                {item.data.status === "received" && (
-                  <ActionBtn
-                    label="Atender"
-                    icon="eye"
-                    color={colors.brand}
-                    onPress={() => changeStatus(item.id, "attending")}
-                    busy={busyId === item.id}
-                  />
-                )}
-                {item.data.status === "attending" && (
-                  <ActionBtn
-                    label="Cerrar"
-                    icon="checkmark-circle"
-                    color={colors.success}
-                    onPress={() => changeStatus(item.id, "closed")}
-                    busy={busyId === item.id}
-                  />
-                )}
-                <ActionBtn
-                  label="Descartar"
-                  icon="close-circle"
-                  color={colors.textMuted}
-                  onPress={() => changeStatus(item.id, "dismissed")}
-                  busy={busyId === item.id}
-                  ghost
-                />
+                {/* Botones de acción */}
+                <View style={styles.actions}>
+                  {item.data.status === "received" && (
+                    <TouchableOpacity
+                      style={[styles.actionBtn, { backgroundColor: colors.brand }]}
+                      onPress={() => changeStatus(item.id, "attending")}
+                      disabled={busyId === item.id}
+                    >
+                      {busyId === item.id ? <ActivityIndicator color="white" size="small" /> : (
+                        <>
+                          <Ionicons name="eye" size={15} color="white" />
+                          <Text style={styles.actionTxt}>Atender</Text>
+                        </>
+                      )}
+                    </TouchableOpacity>
+                  )}
+                  {item.data.status === "attending" && (
+                    <TouchableOpacity
+                      style={[styles.actionBtn, { backgroundColor: colors.success }]}
+                      onPress={() => changeStatus(item.id, "closed")}
+                      disabled={busyId === item.id}
+                    >
+                      {busyId === item.id ? <ActivityIndicator color="white" size="small" /> : (
+                        <>
+                          <Ionicons name="checkmark-circle" size={15} color="white" />
+                          <Text style={styles.actionTxt}>Cerrar caso</Text>
+                        </>
+                      )}
+                    </TouchableOpacity>
+                  )}
+                  <TouchableOpacity
+                    style={[styles.actionBtn, styles.actionBtnGhost]}
+                    onPress={() => changeStatus(item.id, "dismissed")}
+                    disabled={busyId === item.id}
+                  >
+                    <Ionicons name="close-circle" size={15} color={colors.textMuted} />
+                    <Text style={[styles.actionTxt, { color: colors.textMuted }]}>Descartar</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
-            </View>
+            </Pressable>
           );
         }}
       />
@@ -215,138 +260,101 @@ export default function Operator() {
   );
 }
 
-function ActionBtn({
-  label,
-  icon,
-  color,
-  onPress,
-  busy,
-  ghost,
-}: {
-  label: string;
-  icon: keyof typeof Ionicons.glyphMap;
-  color: string;
-  onPress: () => void;
-  busy: boolean;
-  ghost?: boolean;
-}) {
-  return (
-    <Pressable
-      onPress={onPress}
-      disabled={busy}
-      style={[
-        styles.actionBtn,
-        ghost
-          ? { backgroundColor: "transparent", borderColor: colors.border }
-          : { backgroundColor: color, borderColor: color },
-        busy && { opacity: 0.5 },
-      ]}
-    >
-      <Ionicons name={icon} size={14} color={ghost ? colors.textMuted : "#fff"} />
-      <Text style={[styles.actionText, ghost && { color: colors.textMuted }]}>{label}</Text>
-    </Pressable>
-  );
-}
-
-function priorityBg(p?: string): string {
-  if (p === "P1") return colors.p1;
-  if (p === "P2") return colors.p2;
-  return colors.p3;
-}
-
 const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
-  list: { padding: 20, gap: 12 },
+  list: { padding: 16, gap: 12 },
+
+  // Header
   header: {
     flexDirection: "row",
-    alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 8,
+    alignItems: "center",
+    marginBottom: 16,
+    paddingTop: 8,
   },
-  headerRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  h1: { color: colors.text, fontSize: 20, fontWeight: "800" },
-  badge: {
-    backgroundColor: colors.surfaceAlt,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: colors.border,
+  headerTitle: { color: colors.text, fontSize: 24, fontWeight: "900" },
+  headerSub:   { color: colors.textMuted, fontSize: 13, marginTop: 2 },
+  roleBadge: {
+    flexDirection: "row", alignItems: "center", gap: 5,
+    backgroundColor: colors.warning + "18",
+    borderWidth: 1, borderColor: colors.warning + "44",
+    borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6,
   },
-  badgeText: { color: colors.textMuted, fontSize: 12, fontWeight: "700" },
-  emptyWrap: { alignItems: "center", marginTop: 60, gap: 8 },
-  empty: { color: colors.text, fontSize: 16, fontWeight: "700" },
-  emptySub: { color: colors.textMuted, fontSize: 13 },
+  roleTxt: { color: colors.warning, fontSize: 11, fontWeight: "800", letterSpacing: 1 },
+
+  // Stats
+  statsRow: { flexDirection: "row", gap: 10, marginBottom: 16 },
+  statCard: {
+    flex: 1, backgroundColor: colors.surface,
+    borderRadius: 12, borderWidth: 1,
+    padding: 12, alignItems: "center", gap: 4,
+  },
+  statNum:   { color: colors.text, fontSize: 24, fontWeight: "900" },
+  statLabel: { color: colors.textMuted, fontSize: 11, fontWeight: "600" },
+
+  // Filtros
+  filterRow: { flexDirection: "row", gap: 8, marginBottom: 16 },
+  filterBtn: {
+    paddingHorizontal: 16, paddingVertical: 8,
+    borderRadius: 999, borderWidth: 1, borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  filterBtnActive: { backgroundColor: colors.brand, borderColor: colors.brand },
+  filterTxt:       { color: colors.textMuted, fontSize: 13, fontWeight: "600" },
+  filterTxtActive: { color: "white" },
+
+  // Empty
+  emptyWrap: { alignItems: "center", marginTop: 60, gap: 10 },
+  emptyTxt:  { color: colors.text, fontSize: 16, fontWeight: "700" },
+  emptySub:  { color: colors.textMuted, fontSize: 13 },
+
+  // Card
   card: {
     backgroundColor: colors.surface,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: 14,
-    gap: 8,
+    borderRadius: 14, borderWidth: 1, borderColor: colors.border,
+    flexDirection: "row", overflow: "hidden",
   },
-  cardHead: { flexDirection: "row", alignItems: "center", gap: 8 },
-  pill: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 999,
-    minWidth: 32,
-    alignItems: "center",
-  },
-  pillText: { color: colors.text, fontWeight: "800", fontSize: 11 },
-  type: { color: colors.text, fontWeight: "700", fontSize: 13 },
-  statusBadge: {
-    marginLeft: "auto",
-    borderWidth: 1,
-    borderRadius: 999,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-  },
-  statusText: { fontSize: 11, fontWeight: "700" },
+  cardP1: { borderColor: colors.danger + "66" },
+  priorityBar: { width: 4 },
+  cardContent: { flex: 1, padding: 14, gap: 8 },
 
-  // Chip de tipo de incidente
-  typeChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    alignSelf: "flex-start",
-    borderWidth: 1,
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+  cardTop: { flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" },
+  priorityBadge: {
+    borderWidth: 1, borderRadius: 6,
+    paddingHorizontal: 8, paddingVertical: 3,
   },
-  typeChipText: { fontSize: 12, fontWeight: "700" },
+  priorityTxt: { fontSize: 11, fontWeight: "800" },
+  cardType:    { color: colors.text, fontWeight: "700", fontSize: 13, flex: 1 },
+  statusBadge: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 },
+  statusTxt:   { fontSize: 11, fontWeight: "700" },
 
-  reportText: { color: colors.text, fontSize: 14, lineHeight: 20 },
-
-  metaRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginTop: 8,
+  incidentChip: {
+    flexDirection: "row", alignItems: "center", gap: 5,
+    alignSelf: "flex-start", borderWidth: 1,
+    borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4,
   },
+  incidentChipTxt: { fontSize: 12, fontWeight: "700" },
+  cardText: { color: colors.textMuted, fontSize: 13, lineHeight: 18 },
+
+  metaRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   photoTag: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    backgroundColor: colors.brand + "1A",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 999,
+    flexDirection: "row", alignItems: "center", gap: 4,
+    backgroundColor: colors.brand + "18",
+    paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999,
   },
-  photoTagText: { color: colors.brand, fontSize: 12, fontWeight: "600" },
-  detailHint: { flexDirection: "row", alignItems: "center", gap: 2 },
-  detailHintText: { color: colors.textMuted, fontSize: 12, fontWeight: "600" },
-  actions: { flexDirection: "row", gap: 8, marginTop: 4 },
+  photoTagTxt:  { color: colors.brand, fontSize: 11, fontWeight: "600" },
+  detailHint:   { flexDirection: "row", alignItems: "center", gap: 2 },
+  detailHintTxt:{ color: colors.textMuted, fontSize: 12 },
+
+  actions: { flexDirection: "row", gap: 8 },
   actionBtn: {
-    flex: 1,
-    flexDirection: "row",
-    gap: 5,
-    paddingVertical: 9,
-    borderRadius: 8,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
+    flex: 1, flexDirection: "row", gap: 6,
+    paddingVertical: 10, borderRadius: 10,
+    alignItems: "center", justifyContent: "center",
   },
-  actionText: { color: "#fff", fontWeight: "700", fontSize: 13 },
+  actionBtnGhost: {
+    backgroundColor: "transparent",
+    borderWidth: 1, borderColor: colors.border,
+  },
+  actionTxt: { color: "white", fontWeight: "700", fontSize: 13 },
 });

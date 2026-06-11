@@ -15,6 +15,7 @@ import {
 import { signInAnonymously } from "firebase/auth";
 import { setDoc, serverTimestamp } from "firebase/firestore";
 import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
 
 import { Screen } from "@/components/ui/Screen";
 import { getFirebaseAuth } from "@/lib/firebase";
@@ -83,7 +84,13 @@ export default function RoleSelect() {
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       } as never);
-      // El _layout redirige automáticamente a /(tabs)
+
+      // Redirigir según rol explícitamente
+      if (selected === "operator") {
+        router.replace("/(tabs)/operator");
+      } else {
+        router.replace("/(tabs)");
+      }
     } catch (e) {
       const msg = (e as Error).message ?? "Error desconocido";
       Alert.alert(

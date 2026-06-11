@@ -53,7 +53,16 @@ export default function RootLayout() {
     }
 
     // Logueado y onboarding listo → fuera de (auth)
-    if (inAuth) router.replace("/(tabs)");
+    if (inAuth) {
+      if (profile?.role === "operator") {
+        router.replace("/(tabs)/operator");
+      } else {
+        router.replace("/(tabs)");
+      }
+      return;
+    }
+
+    // Ya en (tabs) — no redirigir, dejar que cada pantalla maneje su rol
   }, [authLoading, profileLoading, user, profile, segments, router]);
 
   if (authLoading || (user && profileLoading)) {
