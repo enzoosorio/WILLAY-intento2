@@ -107,7 +107,7 @@ export default function TabsLayout() {
           title: "Buscar",
           tabBarIcon: tabIcon("scan-circle"),
           tabBarActiveTintColor: colors.warning,
-          href: isOperator ? "/(tabs)/buscar" : null,
+          href: "/(tabs)/buscar",
         }}
       />
 
