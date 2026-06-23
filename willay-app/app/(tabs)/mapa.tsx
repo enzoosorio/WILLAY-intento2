@@ -112,6 +112,7 @@ export default function Mapa() {
   const [rows, setRows] = useState<Row[]>([]);
   const [loadingData, setLoadingData] = useState(true);
   const [selected, setSelected] = useState<string | null>(null);
+  const [filter, setFilter] = useState<"todos" | "P1" | "P2" | "P3">("todos");
 
   useEffect(() => {
     const unsub = onSnapshot(
@@ -148,6 +149,7 @@ export default function Mapa() {
   });
 
   const maxCount = Math.max(...Object.values(countByZone), 1);
+  const filteredRows = filter === "todos" ? rows : rows.filter((r) => r.data.priority === filter);
   const selectedSector = SECTORS.find((s) => s.id === selected);
   const selectedRows = selected
     ? rows.filter((r) => ((r.data as any).zone ?? "otros") === selected)
@@ -163,17 +165,30 @@ export default function Mapa() {
         </View>
         <Text style={styles.sub}>Alertas ciudadanas en tiempo real</Text>
 
-        {/* LEYENDA */}
+        {/* FILTROS */}
         <View style={styles.legend}>
-          {[
-            { color: "#FF3B3B", label: "P1 Crítico" },
-            { color: "#F5A524", label: "P2 Moderado" },
-            { color: "#3DA5D9", label: "P3 / Bajo" },
-          ].map((l) => (
-            <View key={l.label} style={styles.legendItem}>
-              <View style={[styles.legendBox, { backgroundColor: l.color }]} />
-              <Text style={styles.legendTxt}>{l.label}</Text>
-            </View>
+          {([
+            { id: "todos", label: "Todos",       color: colors.textMuted },
+            { id: "P1",    label: "P1 Critico",  color: "#FF3B3B"        },
+            { id: "P2",    label: "P2 Moderado", color: "#F5A524"        },
+            { id: "P3",    label: "P3 Bajo",     color: "#3DA5D9"        },
+          ] as { id: string; label: string; color: string }[]).map((f) => (
+            <Pressable
+              key={f.id}
+              onPress={() => setFilter(f.id as any)}
+              style={[
+                styles.legendItem,
+                { paddingHorizontal: 8, paddingVertical: 5, borderRadius: 999, borderWidth: 1,
+                  borderColor: filter === f.id ? f.color : colors.border,
+                  backgroundColor: filter === f.id ? f.color + "22" : colors.surface,
+                },
+              ]}
+            >
+              <View style={[styles.legendBox, { backgroundColor: f.color, opacity: filter === f.id ? 1 : 0.4 }]} />
+              <Text style={[styles.legendTxt, filter === f.id && { color: f.color, fontWeight: "700" }]}>
+                {f.label}
+              </Text>
+            </Pressable>
           ))}
         </View>
 
@@ -185,13 +200,13 @@ export default function Mapa() {
             initialRegion={{
               latitude: -11.865,
               longitude: -77.076,
-              latitudeDelta: 0.08,
-              longitudeDelta: 0.08,
+              latitudeDelta: 0.055,
+              longitudeDelta: 0.055,
             }}
             showsUserLocation
             showsMyLocationButton
           >
-            {rows.map((r) => {
+            {filteredRows.map((r) => {
               const location = (r.data as any)?.location;
               if (!location) return null;
 

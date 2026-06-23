@@ -395,8 +395,8 @@ def mark_report_status(req: https_fn.CallableRequest) -> dict:
         })
         send_expo_push(
             tokens,
-            title="Tu reporte cambió de estado",
-            body=f"Nuevo estado: {new_status}",
+            title="Willay — Tu reporte fue atendido" if new_status == "attending" else "Willay — Reporte cerrado" if new_status == "closed" else "Willay — Reporte actualizado",
+            body="El Serenazgo está atendiendo tu reporte. Mantente atento." if new_status == "attending" else "Tu reporte ha sido cerrado por el Serenazgo." if new_status == "closed" else "Tu reporte ha sido actualizado.",
             data={"kind": "report_status", "reportId": report_id, "status": new_status},
         )
 
