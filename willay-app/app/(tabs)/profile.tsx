@@ -10,6 +10,7 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
+  Switch,
   View,
   ActivityIndicator,
 } from "react-native";
@@ -40,6 +41,8 @@ export default function Profile() {
 
   const [zonaModal, setZonaModal]       = useState(false);
   const [actualizando, setActualizando] = useState(false);
+  const [notifEnabled, setNotifEnabled] = useState(true);
+  const [silentMode,   setSilentMode]   = useState(false);
 
   const isOperator = profile?.role === "operator";
 
@@ -142,6 +145,26 @@ export default function Profile() {
           />
         </View>
 
+        {/* Configuración */}
+        <Text style={[styles.sectionLabel, { marginTop: 16 }]}>CONFIGURACIÓN</Text>
+        <View style={styles.infoCard}>
+          <ToggleRow
+            label="Notificaciones push"
+            description="Recibir alertas del Serenazgo"
+            icon="notifications"
+            value={notifEnabled}
+            onToggle={() => setNotifEnabled(v => !v)}
+          />
+          <Divider />
+          <ToggleRow
+            label="Modo silencioso"
+            description="Sin sonido en las alertas"
+            icon="volume-mute"
+            value={silentMode}
+            onToggle={() => setSilentMode(v => !v)}
+          />
+        </View>
+
         {/* Links */}
         <View style={{ height: 16 }} />
         <NavCard label="Política de privacidad" onPress={() => router.push("/privacy")} />
@@ -185,6 +208,30 @@ export default function Profile() {
 }
 
 // ── Sub-componentes ──────────────────────────────────────────────────
+
+function ToggleRow({ label, description, icon, value, onToggle }: {
+  label: string; description: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  value: boolean; onToggle: () => void;
+}) {
+  return (
+    <View style={styles.toggleRow}>
+      <View style={[styles.toggleIcon, { backgroundColor: colors.brand + "22" }]}>
+        <Ionicons name={icon} size={18} color={colors.brand} />
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.toggleLabel}>{label}</Text>
+        <Text style={styles.toggleDesc}>{description}</Text>
+      </View>
+      <Switch
+        value={value}
+        onValueChange={onToggle}
+        trackColor={{ true: colors.brand, false: colors.border }}
+        thumbColor="white"
+      />
+    </View>
+  );
+}
 
 function InfoRow({ label, value, valueColor }: { label: string; value: string; valueColor?: string }) {
   return (
@@ -318,7 +365,12 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 
-  // Modal zona
+  toggleRow: {
+    flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 14,
+  },
+  toggleIcon: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center" },
+  toggleLabel: { color: colors.text, fontSize: 14, fontWeight: "600" },
+  toggleDesc:  { color: colors.textMuted, fontSize: 12, marginTop: 1 },
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.65)", justifyContent: "center", padding: 20 },
   modalBox: {
     backgroundColor: colors.surface,
