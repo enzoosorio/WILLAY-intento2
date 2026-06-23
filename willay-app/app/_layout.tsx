@@ -13,6 +13,9 @@ import { colors } from "@/theme/colors";
 
 bootstrapFirebase();
 
+let pushRegisteredOnce = false;
+let splashShownOnce = false;
+
 export const unstable_settings = { anchor: "(tabs)" };
 
 export default function RootLayout() {
@@ -20,12 +23,11 @@ export default function RootLayout() {
   const { data: profile, loading: profileLoading } = useUserDoc(user?.uid);
   const segments = useSegments();
   const router = useRouter();
-  const [showSplash, setShowSplash] = useState(true);
+  const [showSplash, setShowSplash] = useState(!splashShownOnce);
 
   useEffect(() => {
-    if (!user) return;
-    // Usuarios con cuenta → crear doc + push token
-    // Anónimos ya crean su doc dentro de role-select
+    if (!user || pushRegisteredOnce) return;
+    pushRegisteredOnce = true;
     if (!user.isAnonymous) {
       ensureUserDoc(user)
         .then(() => registerForPushAsync(user.uid))
@@ -68,7 +70,7 @@ export default function RootLayout() {
   }, [authLoading, profileLoading, user, profile, segments, router]);
 
   if (showSplash) {
-    return <WillaySplash onFinish={() => setShowSplash(false)} />;
+    return <WillaySplash onFinish={() => { splashShownOnce = true; setShowSplash(false); }} />;
   }
 
   if (authLoading || (user && profileLoading)) {
