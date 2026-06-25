@@ -99,6 +99,8 @@ export default function RootLayout() {
         <Stack.Screen name="missing/[id]" options={{ title: "Ficha" }} />
         <Stack.Screen name="localizar/[id]" options={{ title: "Localizar persona" }} />
         <Stack.Screen name="privacy" options={{ title: "Privacidad" }} />
+        <Stack.Screen name="willay-bot" options={{ headerShown: false }} />
+        <Stack.Screen name="ia-stats" options={{ headerShown: false }} />
       </Stack>
     </ThemeProvider>
   );

@@ -541,3 +541,83 @@ def summarize_user_reports(req: https_fn.CallableRequest) -> dict:
             "count": len(reports),
             "usedGemini": False,
         }
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# BOT DE SEGURIDAD — chat_assistant (callable)
+# El vecino le hace preguntas al bot sobre qué hacer en situaciones de peligro
+# ──────────────────────────────────────────────────────────────────────────────
+
+@https_fn.on_call(region=REGION)
+def chat_assistant(req: https_fn.CallableRequest) -> dict:
+    """
+    Bot de seguridad ciudadana para Puente Piedra.
+    Responde preguntas del vecino sobre qué hacer en situaciones de emergencia.
+    """
+    if not req.auth:
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.UNAUTHENTICATED,
+            message="Auth requerida.",
+        )
+
+    data = req.data or {}
+    message = (data.get("message") or "").strip()
+    history = data.get("history") or []  # lista de {role, content}
+
+    if not message:
+        raise https_fn.HttpsError(
+            code=https_fn.FunctionsErrorCode.INVALID_ARGUMENT,
+            message="Mensaje requerido.",
+        )
+
+    api_key = os.environ.get("GROQ_API_KEY", "")
+    if not api_key:
+        return {
+            "reply": "El asistente no está disponible en este momento. Llama al Serenazgo: (01) 219-6220.",
+            "usedGemini": False,
+        }
+
+    try:
+        import urllib.request, json as _json
+
+        messages_payload = [
+            {"role": "system", "content": (
+                "Eres WillayBot, el asistente de seguridad ciudadana del distrito de Puente Piedra, Lima, Peru. "
+                "Tu funcion es ayudar a los vecinos en situaciones de emergencia. "
+                "Responde SIEMPRE en espanol, de forma clara y concisa (maximo 3-4 oraciones). "
+                "Da consejos practicos. En emergencias recomienda: Serenazgo (01)219-6220, Policia 105, Bomberos 116. "
+                "Se empatico pero directo."
+            )},
+        ]
+        for msg in history[-6:]:
+            role = "user" if msg.get("role") == "user" else "assistant"
+            messages_payload.append({"role": role, "content": msg.get("content", "")})
+        messages_payload.append({"role": "user", "content": message})
+
+        body = _json.dumps({
+            "model": "llama-3.1-8b-instant",
+            "messages": messages_payload,
+            "max_tokens": 300,
+            "temperature": 0.7,
+        }).encode()
+
+        req_obj = urllib.request.Request(
+            "https://api.groq.com/openai/v1/chat/completions",
+            data=body,
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {api_key}",
+            },
+            method="POST"
+        )
+        with urllib.request.urlopen(req_obj, timeout=10) as r:
+            data = _json.loads(r.read())
+        reply = data["choices"][0]["message"]["content"].strip()
+        return {"reply": reply, "usedGemini": True}
+
+    except Exception as e:
+        logger.warning("chat_assistant error: %s", e)
+        return {
+            "reply": "Lo siento, no puedo responder ahora. Para emergencias llama al Serenazgo: (01) 219-6220 o usa el boton de panico.",
+            "usedGemini": False,
+        }
