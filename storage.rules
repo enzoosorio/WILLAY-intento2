@@ -25,5 +25,13 @@ service firebase.storage {
         && request.resource.contentType.matches('image/.*');
       allow delete: if false; // solo Cloud Function cleanup
     }
+
+    // Fotos adjuntas a reportes.
+    match /reports/{fileName} {
+      allow read:  if isAuth();
+      allow write: if isAuth()
+        && request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
   }
 }

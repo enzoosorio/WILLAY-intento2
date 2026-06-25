@@ -14,7 +14,7 @@ Fuente de verdad de las decisiones: [`../crafting/`](../crafting/).
 | Firebase JS SDK | 11 (modular) |
 | Auth | `expo-auth-session` + Google Sign-In (anonymous fallback en emulador) |
 | Push | `expo-notifications` + Expo Push API (ver "Desviaciones") |
-| Visión facial | flag `USE_FACENET` — mock perceptual hash / FaceNet TFJS |
+| Visión facial | flag `FACE_BACKEND` — remote HTTP / mock perceptual hash / FaceNet TFJS |
 | TypeScript | 5.9 strict |
 
 ## Quick start
@@ -53,6 +53,8 @@ Todas viven en `.env` y se exponen vía `app.config.ts` → `Constants.expoConfi
 | `USE_EMULATORS` | `true` apunta a localhost; `false` a prod | — |
 | `EMULATOR_HOST` | Host del emulator (Android auto-mapea a 10.0.2.2) | — |
 | `USE_FACENET` | `true` carga TFJS; `false` usa mock perceptual hash | No |
+| `FACE_BACKEND` | `remote` usa un endpoint HTTP propio; `onnx`/`facenet`/`mock` según fallback | No |
+| `FACE_REMOTE_URL` | URL base del backend facial remoto | Sí, si usás `remote` |
 | `EAS_PROJECT_ID` | Push tokens en device físico | No (sin esto, push deshabilitado en dev) |
 
 ## Estructura
@@ -152,7 +154,7 @@ tras `onAuthStateChanged`. Idempotente.
 | Probar pánico con push real | Necesitás 2 cuentas con `expoPushTokens` salvados; correr en device físico con `EAS_PROJECT_ID` |
 | Convertir a operador | `firebase emulators:start` (otra terminal) + `FIRESTORE_EMULATOR_HOST=localhost:8080 python ../tools/make_operator.py <uid>` |
 | Probar Gemini fallback | `GEMINI_API_KEY=…` en `functions/.env` + texto ambiguo |
-| Probar visión real | `USE_FACENET=true` + seguir TODO en `lib/face/facenet.ts` |
+| Probar visión real | `FACE_BACKEND=remote` + `FACE_REMOTE_URL=<url>` |
 
 ## Roadmap (ver `../crafting/08-roadmap.md`)
 

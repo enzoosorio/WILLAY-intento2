@@ -28,6 +28,7 @@ from firebase_admin import initialize_app, storage
 from firebase_functions import firestore_fn, https_fn, options, scheduler_fn
 
 from classifier.rules import classify_text as classify_rules
+from face_embed_remote import face_embed
 from push import send_expo_push
 
 logger = logging.getLogger(__name__)

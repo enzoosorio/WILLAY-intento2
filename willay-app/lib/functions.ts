@@ -44,3 +44,18 @@ export interface MarkReportStatusOutput {
 }
 export const markReportStatus = (): HttpsCallable<MarkReportStatusInput, MarkReportStatusOutput> =>
   httpsCallable(getFirebaseFunctions(), "mark_report_status");
+
+// ─── face_embed ───────────────────────────────────────────────────────────
+export interface FaceEmbedInput {
+  imageBase64: string;
+  mimeType?: string;
+  client?: string;
+}
+export interface FaceEmbedOutput {
+  embedding: number[];
+  dim: number;
+  model: string;
+  backend: string;
+}
+export const faceEmbed = (): HttpsCallable<FaceEmbedInput, FaceEmbedOutput> =>
+  httpsCallable(getFirebaseFunctions(), "face_embed");

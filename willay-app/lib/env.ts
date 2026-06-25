@@ -18,12 +18,13 @@ type Extra = {
   emulatorHost: string;
   useFacenet: string;
   faceBackend: string; // "onnx" | "facenet" | "mock"
+  faceRemoteUrl: string; // callable/HTTP endpoint remoto para embeddings
   faceModelUrl: string; // URL del .onnx (backend onnx)
   facenetModelUrl: string; // URL del model.json tfjs (backend facenet)
   eas: { projectId: string };
 };
 
-export type FaceBackend = "onnx" | "facenet" | "mock";
+export type FaceBackend = "remote" | "onnx" | "facenet" | "mock";
 
 const raw = (Constants.expoConfig?.extra ?? {}) as Partial<Extra>;
 
@@ -43,9 +44,10 @@ export const env = {
   // USE_FACENET por compatibilidad; default "mock" (corre en Expo Go).
   faceBackend: ((): FaceBackend => {
     const b = (raw.faceBackend || "").toLowerCase();
-    if (b === "onnx" || b === "facenet" || b === "mock") return b;
+    if (b === "remote" || b === "onnx" || b === "facenet" || b === "mock") return b;
     return raw.useFacenet === "true" ? "facenet" : "mock";
   })(),
+  faceRemoteUrl: raw.faceRemoteUrl || "",
   faceModelUrl: raw.faceModelUrl || "",
   facenetModelUrl: raw.facenetModelUrl || "",
   easProjectId: raw.eas?.projectId || "",

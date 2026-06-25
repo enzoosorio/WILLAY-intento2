@@ -30,9 +30,10 @@ export function cosineSimilarity(a: number[], b: number[]): number {
 
 /**
  * Umbral de match por backend.
+ * - remote: usa el mismo umbral del modelo ONNX remoto.
  * - onnx (ArcFace): 0.40 es el punto de partida típico para coseno con embeddings
  *   L2-normalizados de InsightFace; CALIBRAR con el set de 20+20 pares (Fase 5).
  * - facenet (MobileFaceNet tfjs): 0.85 según ADR-004.
  * - mock: 0.92 (más estricto porque el hash de contenido está muy correlacionado).
  */
-export const MATCH_THRESHOLD = { onnx: 0.4, facenet: 0.85, mock: 0.92 } as const;
+export const MATCH_THRESHOLD = { remote: 0.4, onnx: 0.4, facenet: 0.85, mock: 0.92 } as const;
