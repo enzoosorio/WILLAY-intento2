@@ -73,8 +73,8 @@ export interface SightingDoc {
   reporterUid: string;
   photoUrl: string;
   embedding: number[];
-  location: GeoPoint;
-  geohash: string;
+  location?: GeoPoint;
+  geohash?: string;
   matchedMissingId: string | null;
   similarity?: number;
   createdAt: Timestamp;

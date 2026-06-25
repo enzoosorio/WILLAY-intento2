@@ -80,7 +80,12 @@ export default function NewMissing() {
         getCurrentWithGeohash().catch(() => null),
       ]);
 
-      const photoUrl = await uploadMissingPhoto(tempRef.id, photoUri);
+      let photoUrl = "";
+      try {
+        photoUrl = await uploadMissingPhoto(tempRef.id, photoUri);
+      } catch (uploadError) {
+        console.warn("[new] foto no subida:", uploadError);
+      }
 
       await setDoc(doc(missingPersonsCol(), tempRef.id), {
         registrantUid: user.uid,

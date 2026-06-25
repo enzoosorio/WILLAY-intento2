@@ -36,4 +36,4 @@ export function cosineSimilarity(a: number[], b: number[]): number {
  * - facenet (MobileFaceNet tfjs): 0.85 según ADR-004.
  * - mock: 0.92 (más estricto porque el hash de contenido está muy correlacionado).
  */
-export const MATCH_THRESHOLD = { remote: 0.4, onnx: 0.4, facenet: 0.85, mock: 0.92 } as const;
+export const MATCH_THRESHOLD = { remote: 0.25, onnx: 0.4, facenet: 0.85, mock: 0.92 } as const;

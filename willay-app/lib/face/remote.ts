@@ -63,6 +63,12 @@ export const RemoteFaceEmbedder: FaceEmbedder = {
       throw new Error("respuesta inválida del backend remoto");
     }
 
+    console.log("[remote-face] embedding", {
+      dim: embedding.length,
+      first: Number(embedding[0] ?? 0).toFixed(6),
+      meanAbs: (embedding.reduce((sum, value) => sum + Math.abs(Number(value) || 0), 0) / embedding.length).toFixed(6),
+    });
+
     return embedding.map((value: unknown) => Number(value));
   },
 };

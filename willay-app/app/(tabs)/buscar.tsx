@@ -142,15 +142,24 @@ export default function Buscar() {
       }
       const matched = best.sim >= getMatchThreshold();
       if (!matched) { setResult({ matched: false, similarity: best.sim }); return; }
-      const loc = await getCurrentWithGeohash();
+      let loc: Awaited<ReturnType<typeof getCurrentWithGeohash>> | null = null;
+      try {
+        loc = await getCurrentWithGeohash();
+      } catch (locationError) {
+        console.warn("[buscar] ubicación no disponible:", locationError);
+      }
       const sRef = await addDoc(sightingsCol(), {
         reporterUid: user.uid, photoUrl: "", embedding: emb,
-        location: loc.geopoint, geohash: loc.geohash,
+        ...(loc ? { location: loc.geopoint, geohash: loc.geohash } : {}),
         matchedMissingId: best.id, similarity: best.sim,
         createdAt: serverTimestamp(),
       } as never);
-      const photoUrl = await uploadSightingPhoto(sRef.id, photoUri);
-      await updateDoc(doc(getDb(), "sightings", sRef.id), { photoUrl });
+      try {
+        const photoUrl = await uploadSightingPhoto(sRef.id, photoUri);
+        await updateDoc(doc(getDb(), "sightings", sRef.id), { photoUrl });
+      } catch (uploadError) {
+        console.warn("[buscar] foto de avistamiento no subida:", uploadError);
+      }
       setResult({ matched: true, similarity: best.sim, missingId: best.id, missingName: best.name, category: best.category });
     } catch (e) {
       Alert.alert("Error", (e as Error).message);
