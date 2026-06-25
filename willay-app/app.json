@@ -50,6 +50,7 @@
     "plugins": [
       "expo-router",
       "expo-secure-store",
+      "onnxruntime-react-native",
       [
         "@react-native-firebase/app",
         {

@@ -227,7 +227,6 @@ const styles = StyleSheet.create({
   photoPlaceholder: { alignItems: "center", justifyContent: "center" },
   photoOverlay: {
     ...StyleSheet.absoluteFillObject,
-    background: "transparent",
     backgroundColor: "rgba(0,0,0,0.25)",
   },
   backBtn: {

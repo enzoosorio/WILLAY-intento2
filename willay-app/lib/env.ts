@@ -17,8 +17,13 @@ type Extra = {
   useEmulators: string;
   emulatorHost: string;
   useFacenet: string;
+  faceBackend: string; // "onnx" | "facenet" | "mock"
+  faceModelUrl: string; // URL del .onnx (backend onnx)
+  facenetModelUrl: string; // URL del model.json tfjs (backend facenet)
   eas: { projectId: string };
 };
+
+export type FaceBackend = "onnx" | "facenet" | "mock";
 
 const raw = (Constants.expoConfig?.extra ?? {}) as Partial<Extra>;
 
@@ -34,5 +39,14 @@ export const env = {
         ? "10.0.2.2"
         : "localhost",
   useFacenet: raw.useFacenet === "true",
+  // Backend de visión facial. FACE_BACKEND manda; si no está, se infiere de
+  // USE_FACENET por compatibilidad; default "mock" (corre en Expo Go).
+  faceBackend: ((): FaceBackend => {
+    const b = (raw.faceBackend || "").toLowerCase();
+    if (b === "onnx" || b === "facenet" || b === "mock") return b;
+    return raw.useFacenet === "true" ? "facenet" : "mock";
+  })(),
+  faceModelUrl: raw.faceModelUrl || "",
+  facenetModelUrl: raw.facenetModelUrl || "",
   easProjectId: raw.eas?.projectId || "",
 } as const;

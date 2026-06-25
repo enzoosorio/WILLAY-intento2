@@ -28,5 +28,11 @@ export function cosineSimilarity(a: number[], b: number[]): number {
   return dot / (Math.sqrt(na) * Math.sqrt(nb));
 }
 
-/** Umbral de match. 0.85 para FaceNet (ADR), 0.92 para mock (más estricto porque el hash es más correlacionado). */
-export const MATCH_THRESHOLD = { facenet: 0.85, mock: 0.92 } as const;
+/**
+ * Umbral de match por backend.
+ * - onnx (ArcFace): 0.40 es el punto de partida típico para coseno con embeddings
+ *   L2-normalizados de InsightFace; CALIBRAR con el set de 20+20 pares (Fase 5).
+ * - facenet (MobileFaceNet tfjs): 0.85 según ADR-004.
+ * - mock: 0.92 (más estricto porque el hash de contenido está muy correlacionado).
+ */
+export const MATCH_THRESHOLD = { onnx: 0.4, facenet: 0.85, mock: 0.92 } as const;

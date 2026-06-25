@@ -39,7 +39,7 @@ export default function RootLayout() {
     const currentScreen = segments[1];
 
     if (!user) {
-      if (segments[0] !== "(auth)") router.replace("/(auth)/login");
+      if (segments[0] !== "(auth)") router.replace("/login");
       return;
     }
 
@@ -47,7 +47,7 @@ export default function RootLayout() {
       if (user.isAnonymous) {
         if (segments[0] !== "(tabs)") router.replace("/(tabs)");
       } else {
-        if (segments[1] !== "onboarding") router.replace("/(auth)/onboarding");
+        if (segments[1] !== "onboarding") router.replace("/onboarding");
       }
       return;
     }

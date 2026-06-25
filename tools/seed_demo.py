@@ -7,6 +7,14 @@ Crea:
   - 1 reporte panic.
   - 2 fichas de personas desaparecidas (sin foto real; embedding aleatorio).
 
+⚠  IMPORTANTE sobre las fichas y el match facial:
+    Los embeddings que crea este seed son ALEATORIOS y de dimensión EMBED_DIM
+    (default 64, la del mock). Sirven para poblar el feed, pero NO harán match
+    con una foto real. Para demostrar el reconocimiento facial REAL (USE_FACENET
+    =true, embeddings 192-d producidos por MobileFaceNet), las fichas deben
+    crearse DESDE LA APP (missing/new.tsx), que genera el embedding con el modelo.
+    Ajusta la dimensión del seed con:  EMBED_DIM=192 python tools/seed_demo.py <uid>
+
 Pensado para correr contra el EMULADOR:
     $env:FIRESTORE_EMULATOR_HOST="localhost:8080"
     python tools/seed_demo.py <uid-del-ciudadano-demo>
@@ -39,6 +47,7 @@ def main() -> None:
     now = datetime.now(timezone.utc)
     geohash = "6mc6cn"  # Lima-Puente Piedra aproximado, precisión 6
     geopoint = firestore.GeoPoint(-11.86, -77.07)
+    embed_dim = int(os.environ.get("EMBED_DIM", "64"))  # 64 mock, 192 facenet
 
     reports = [
         {"type": "text", "text": "Tres sujetos con cuchillo en la esquina del parque, mucha gente alrededor."},
@@ -69,7 +78,7 @@ def main() -> None:
     ]
     for f in fichas:
         doc_ref = db.collection("missing_persons").document()
-        embedding = [random.uniform(-1, 1) for _ in range(64)]
+        embedding = [random.uniform(-1, 1) for _ in range(embed_dim)]
         doc_ref.set({
             "registrantUid": uid,
             "name": f["name"],

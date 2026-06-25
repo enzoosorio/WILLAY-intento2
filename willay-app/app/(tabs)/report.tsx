@@ -34,14 +34,15 @@ const INCIDENT_TYPES: {
   id: IncidentType;
   label: string;
   icon: keyof typeof Ionicons.glyphMap;
+  color: string;
 }[] = [
-  { id: "robo",               label: "Robo",       icon: "card"         },
-  { id: "asalto",             label: "Extorsión",  icon: "phone-portrait"},
-  { id: "violencia_familiar", label: "Violencia",  icon: "hand-left"    },
-  { id: "accidente",          label: "Salud",      icon: "medkit"       },
-  { id: "persona_sospechosa", label: "Rescate",    icon: "shield"       },
-  { id: "vandalismo",         label: "Incendio",   icon: "flame"        },
-  { id: "otro",               label: "Otros",      icon: "grid"         },
+  { id: "robo",               label: "Robo",       icon: "card",          color: "#E53E3E" },
+  { id: "asalto",             label: "Extorsión",  icon: "phone-portrait",color: "#DD6B20" },
+  { id: "violencia_familiar", label: "Violencia",  icon: "hand-left",     color: "#C53030" },
+  { id: "accidente",          label: "Salud",      icon: "medkit",        color: "#2B6CB0" },
+  { id: "persona_sospechosa", label: "Rescate",    icon: "shield",        color: "#276749" },
+  { id: "vandalismo",         label: "Incendio",   icon: "flame",         color: "#C05621" },
+  { id: "otro",               label: "Otros",      icon: "grid",          color: "#553C9A" },
 ];
 
 function getIncident(id?: string) {

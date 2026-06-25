@@ -47,6 +47,9 @@ export default ({ config }: { config: ExpoConfig }): ExpoConfig => {
       useEmulators: "$USE_EMULATORS",
       emulatorHost: "$EMULATOR_HOST",
       useFacenet: "$USE_FACENET",
+      faceBackend: "$FACE_BACKEND",
+      faceModelUrl: "$FACE_MODEL_URL",
+      facenetModelUrl: "$FACENET_MODEL_URL",
       eas: { projectId: "$EAS_PROJECT_ID" },
     }) as Record<string, unknown>,
   };
