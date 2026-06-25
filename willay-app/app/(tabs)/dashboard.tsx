@@ -1,46 +1,59 @@
+// app/(tabs)/dashboard.tsx
+// Panel de estadísticas para el administrador.
+// Muestra: resumen de alertas, gráfico de barras por tipo, gráfico por sector,
+// y listado de las últimas incidencias recientes.
 import { useEffect, useState } from "react";
 import {
-  ScrollView, StyleSheet, Text, View,
-  ActivityIndicator, Dimensions,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  ActivityIndicator,
+  TouchableOpacity,
+  Dimensions,
 } from "react-native";
 import { onSnapshot } from "firebase/firestore";
-import { Redirect } from "expo-router";
+import { Redirect, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
 import { Screen } from "@/components/ui/Screen";
-import { activeReportsQuery } from "@/lib/collections";
+import { activeReportsQuery, reportsCol } from "@/lib/collections";
 import { useAuthUser, useUserDoc } from "@/lib/session";
 import { colors } from "@/theme/colors";
 import type { ReportDoc } from "@/types/models";
 
 const { width } = Dimensions.get("window");
+const CHART_W = width - 48;
+
 type Row = { id: string; data: ReportDoc };
 
-const ZONE_LABEL: Record<string, string> = {
-  zapallal:    "Zapallal",
+const SECTORES = ["Zapallal", "La Ensenada", "Huamantanga", "Centro", "Otros"];
+const SECTOR_MAP: Record<string, string> = {
+  zapallal: "Zapallal",
   la_ensenada: "La Ensenada",
   huamantanga: "Huamantanga",
-  centro:      "Centro",
-  otros:       "Otros",
+  centro: "Centro",
+  otros: "Otros",
 };
 
-const STATUS_INFO: Record<string, { label: string; color: string }> = {
-  received:  { label: "Recibido",    color: colors.warning  },
-  attending: { label: "En atención", color: colors.brand    },
-  closed:    { label: "Cerrado",     color: colors.success  },
-  dismissed: { label: "Descartado",  color: colors.textMuted},
+const STATUS_LABEL: Record<string, string> = {
+  received: "Recibido",
+  attending: "En atención",
+  closed: "Cerrado",
+  dismissed: "Descartado",
 };
-
-function priorityColor(p?: string) {
-  if (p === "P1") return colors.danger;
-  if (p === "P2") return colors.warning;
-  return "#3DA5D9";
-}
+const STATUS_COLOR: Record<string, string> = {
+  received: colors.warning,
+  attending: colors.brand,
+  closed: colors.success,
+  dismissed: colors.textMuted,
+};
 
 export default function Dashboard() {
   const { user } = useAuthUser();
   const { data: profile, loading } = useUserDoc(user?.uid);
-  const [rows,        setRows]        = useState<Row[]>([]);
+  const [active, setActive] = useState<Row[]>([]);
+  const [all, setAll] = useState<Row[]>([]);
   const [loadingData, setLoadingData] = useState(true);
 
   if (!loading && profile && profile.role !== "operator") {
@@ -48,45 +61,38 @@ export default function Dashboard() {
   }
 
   useEffect(() => {
-    return onSnapshot(activeReportsQuery(), (snap: any) => {
-      setRows(snap.docs.map((d: any) => ({ id: d.id, data: d.data() as ReportDoc })));
+    // Escucha alertas activas
+    const unsubActive = onSnapshot(activeReportsQuery(), (snap) => {
+      setActive(snap.docs.map((d) => ({ id: d.id, data: d.data() as ReportDoc })));
       setLoadingData(false);
     });
+    return () => unsubActive();
   }, []);
 
   if (loading || loadingData) {
-    return <View style={styles.center}><ActivityIndicator size="large" color={colors.brand} /></View>;
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" color={colors.brand} />
+      </View>
+    );
   }
 
-  const total     = rows.length;
-  const p1        = rows.filter((r) => r.data.priority === "P1").length;
-  const p2        = rows.filter((r) => r.data.priority === "P2").length;
-  const p3        = rows.filter((r) => r.data.priority === "P3" || !r.data.priority).length;
-  const attending = rows.filter((r) => r.data.status === "attending").length;
-  const received  = rows.filter((r) => r.data.status === "received").length;
-  const panic     = rows.filter((r) => r.data.type === "panic").length;
-  const reports   = rows.filter((r) => r.data.type === "text").length;
+  // ── Cálculos ──
+  const totalActive = active.length;
+  const p1 = active.filter((r) => r.data.priority === "P1").length;
+  const p2 = active.filter((r) => r.data.priority === "P2").length;
+  const attending = active.filter((r) => r.data.status === "attending").length;
+  const received = active.filter((r) => r.data.status === "received").length;
 
-  // Por zona
-  const byZone: Record<string, number> = {};
-  rows.forEach((r) => {
-    const z = (r.data as any).zone ?? "otros";
-    byZone[z] = (byZone[z] ?? 0) + 1;
-  });
-  const maxZone = Math.max(...Object.values(byZone), 1);
+  // Conteo por tipo
+  const panicCount = active.filter((r) => r.data.type === "panic").length;
+  const textCount = active.filter((r) => r.data.type === "text").length;
+  const maxType = Math.max(panicCount, textCount, 1);
 
-  // Por categoría
-  const byCategory: Record<string, number> = {};
-  rows.forEach((r) => {
-    const cat = (r.data as any).categoryLabel ?? (r.data.type === "panic" ? "Pánico" : "Otro");
-    byCategory[cat] = (byCategory[cat] ?? 0) + 1;
-  });
-  const topCategories = Object.entries(byCategory)
-    .sort(([, a], [, b]) => b - a)
-    .slice(0, 5);
-  const maxCat = Math.max(...topCategories.map(([, v]) => v), 1);
+  const router = useRouter();
 
-  const recent = [...rows].slice(0, 4);
+  // Últimas 5 alertas
+  const recent = [...active].slice(0, 5);
 
   return (
     <Screen padded={false}>
@@ -94,103 +100,112 @@ export default function Dashboard() {
 
         {/* Header */}
         <View style={styles.header}>
-          <View>
-            <Text style={styles.title}>Dashboard</Text>
-            <Text style={styles.subtitle}>Panel de estadísticas · Serenazgo</Text>
-          </View>
-          <View style={styles.badgeWrap}>
-            <Ionicons name="shield-checkmark" size={14} color={colors.warning} />
-            <Text style={styles.badgeTxt}>OPERADOR</Text>
-          </View>
+          <Ionicons name="stats-chart" size={22} color={colors.warning} />
+          <Text style={styles.h1}>Dashboard Admin</Text>
         </View>
 
-        {/* Stats grid */}
-        <View style={styles.statsGrid}>
-          <StatCard icon="flash"            label="Total activas" value={total}     color={colors.brand}   />
-          <StatCard icon="alert-circle"     label="P1 Crítico"    value={p1}        color={colors.danger}  />
-          <StatCard icon="warning"          label="P2 Moderado"   value={p2}        color={colors.warning} />
-          <StatCard icon="eye"              label="En atención"   value={attending} color={colors.success} />
-          <StatCard icon="time"             label="Sin atender"   value={received}  color="#A1A8B8"        />
-          <StatCard icon="cellular"         label="P3 Bajo"       value={p3}        color="#3DA5D9"        />
+        {/* Tarjetas de resumen */}
+        <View style={styles.cards}>
+          <StatCard icon="flash" label="Activas" value={totalActive} color={colors.brand} />
+          <StatCard icon="alert" label="P1 Críticas" value={p1} color={colors.p1} />
+          <StatCard icon="warning" label="P2 Alerta" value={p2} color={colors.p2} />
+          <StatCard icon="eye" label="En atención" value={attending} color={colors.success} />
         </View>
 
-        {/* Tipo de alerta */}
-        <Text style={styles.sectionLabel}>TIPO DE ALERTA</Text>
-        <View style={styles.card}>
-          <BarRow label="Pánico" value={panic}   max={Math.max(panic, reports, 1)} color={colors.danger} icon="alarm" />
-          <BarRow label="Reporte" value={reports} max={Math.max(panic, reports, 1)} color={colors.brand}  icon="document-text" />
+        {/* Gráfico de barras — Por tipo de alerta */}
+        <SectionTitle>Alertas por tipo</SectionTitle>
+        <View style={styles.chartBox}>
+          <BarRow label="🚨 Pánico" value={panicCount} max={maxType} color={colors.p1} />
+          <BarRow label="📝 Reporte" value={textCount} max={maxType} color={colors.brand} />
+        </View>
+
+        {/* Gráfico de estado */}
+        <SectionTitle>Estado de alertas activas</SectionTitle>
+        <View style={styles.chartBox}>
+          <DonutLegend
+            items={[
+              { label: "Recibidas", value: received, color: colors.warning },
+              { label: "En atención", value: attending, color: colors.brand },
+            ]}
+            total={totalActive}
+          />
         </View>
 
         {/* Prioridades */}
-        <Text style={styles.sectionLabel}>DISTRIBUCIÓN POR PRIORIDAD</Text>
-        <View style={styles.card}>
-          <View style={styles.priorityRow}>
-            <PriorityCircle label="P1" value={p1} total={total} color={colors.danger}  />
-            <PriorityCircle label="P2" value={p2} total={total} color={colors.warning} />
-            <PriorityCircle label="P3" value={p3} total={total} color="#3DA5D9"        />
-          </View>
-        </View>
-
-        {/* Por zona */}
-        <Text style={styles.sectionLabel}>ALERTAS POR ZONA</Text>
-        <View style={styles.card}>
-          {Object.entries(ZONE_LABEL).map(([key, label]) => {
-            const count = byZone[key] ?? 0;
-            const ratio = count / maxZone;
-            const barColor = ratio > 0.66 ? colors.danger : ratio > 0.33 ? colors.warning : colors.brand;
+        <SectionTitle>Distribución por prioridad</SectionTitle>
+        <View style={styles.chartBox}>
+          {(["P1", "P2", "P3"] as const).map((p) => {
+            const count = active.filter((r) => r.data.priority === p).length;
+            const pct = totalActive > 0 ? count / totalActive : 0;
             return (
-              <BarRow key={key} label={label} value={count} max={maxZone} color={barColor} />
+              <View key={p} style={styles.barRow}>
+                <Text style={styles.barLabel}>{p}</Text>
+                <View style={styles.barTrack}>
+                  <View
+                    style={[
+                      styles.barFill,
+                      {
+                        width: `${Math.round(pct * 100)}%`,
+                        backgroundColor:
+                          p === "P1" ? colors.p1 : p === "P2" ? colors.p2 : colors.p3,
+                      },
+                    ]}
+                  />
+                </View>
+                <Text style={styles.barValue}>{count}</Text>
+              </View>
             );
           })}
         </View>
 
-        {/* Top categorías */}
-        <Text style={styles.sectionLabel}>TOP INCIDENCIAS</Text>
-        <View style={styles.card}>
-          {topCategories.length === 0 ? (
-            <Text style={{ color: colors.textMuted, fontSize: 13 }}>Sin datos</Text>
-          ) : topCategories.map(([cat, count]) => (
-            <BarRow key={cat} label={cat} value={count} max={maxCat} color={colors.brand} />
-          ))}
-        </View>
+        {/* Botón estadísticas IA */}
+        <TouchableOpacity
+          style={styles.iaBanner}
+          onPress={() => router.push("/ia-stats" as never)}
+          activeOpacity={0.85}
+        >
+          <View style={styles.iaBannerLeft}>
+            <Ionicons name="sparkles" size={22} color={colors.warning} />
+            <View>
+              <Text style={styles.iaBannerTitle}>Estadísticas del Modelo IA</Text>
+              <Text style={styles.iaBannerSub}>Ver precisión del clasificador</Text>
+            </View>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+        </TouchableOpacity>
 
-        {/* Recientes */}
-        <Text style={styles.sectionLabel}>ÚLTIMAS ALERTAS</Text>
+        {/* Últimas alertas */}
+        <SectionTitle>Últimas alertas</SectionTitle>
         {recent.length === 0 ? (
           <View style={styles.emptyBox}>
-            <Ionicons name="checkmark-circle" size={36} color={colors.success} />
-            <Text style={styles.emptyTxt}>Sin alertas activas</Text>
+            <Ionicons name="checkmark-circle" size={32} color={colors.success} />
+            <Text style={styles.emptyText}>Sin alertas activas</Text>
           </View>
-        ) : recent.map((r) => {
-          const status = STATUS_INFO[r.data.status] ?? STATUS_INFO.received;
-          const isPanic = r.data.type === "panic";
-          return (
-            <View key={r.id} style={[styles.alertCard, { borderLeftColor: priorityColor(r.data.priority) }]}>
-              <View style={styles.alertTop}>
-                <View style={[styles.priorityBadge, {
-                  backgroundColor: priorityColor(r.data.priority) + "22",
-                  borderColor: priorityColor(r.data.priority),
-                }]}>
-                  <Text style={[styles.priorityTxt, { color: priorityColor(r.data.priority) }]}>
-                    {r.data.priority ?? "P3"}
-                  </Text>
+        ) : (
+          recent.map((r) => (
+            <View key={r.id} style={styles.alertCard}>
+              <View style={styles.alertHead}>
+                <View style={[styles.pill, { backgroundColor: priorityBg(r.data.priority) }]}>
+                  <Text style={styles.pillText}>{r.data.priority ?? "—"}</Text>
                 </View>
                 <Text style={styles.alertType}>
-                  {isPanic ? "Alerta de Pánico" : ((r.data as any).categoryLabel ?? "Reporte")}
+                  {r.data.type === "panic" ? "🚨 Pánico" : "📝 Reporte"}
                 </Text>
-                <View style={[styles.statusBadge, { borderColor: status.color }]}>
-                  <Text style={[styles.statusTxt, { color: status.color }]}>{status.label}</Text>
+                <View style={[styles.statusDot, { borderColor: STATUS_COLOR[r.data.status] }]}>
+                  <Text style={[styles.statusTxt, { color: STATUS_COLOR[r.data.status] }]}>
+                    {STATUS_LABEL[r.data.status]}
+                  </Text>
                 </View>
               </View>
-              {r.data.text && (
-                <Text style={styles.alertText} numberOfLines={1}>{r.data.text}</Text>
-              )}
-              {(r.data as any).authorName && (
-                <Text style={styles.alertAuthor}>Por: {(r.data as any).authorName}</Text>
-              )}
+              {r.data.text ? (
+                <Text style={styles.alertText} numberOfLines={2}>{r.data.text}</Text>
+              ) : null}
+              <Text style={styles.alertReason}>
+                {r.data.priorityReason ?? "Clasificando…"}
+              </Text>
             </View>
-          );
-        })}
+          ))
+        )}
 
         <View style={{ height: 32 }} />
       </ScrollView>
@@ -198,112 +213,197 @@ export default function Dashboard() {
   );
 }
 
-// ── Sub-componentes ─────────────────────────────────────────────────
+// ── Sub-componentes ───────────────────────────────────────────────────────────
 
-function StatCard({ icon, label, value, color }: { icon: string; label: string; value: number; color: string }) {
+function SectionTitle({ children }: { children: string }) {
+  return <Text style={styles.sectionTitle}>{children}</Text>;
+}
+
+function StatCard({
+  icon,
+  label,
+  value,
+  color,
+}: {
+  icon: string;
+  label: string;
+  value: number;
+  color: string;
+}) {
   return (
-    <View style={[styles.statCard, { borderColor: color + "44" }]}>
-      <Ionicons name={icon as any} size={18} color={color} />
+    <View style={[styles.statCard, { borderColor: color + "55" }]}>
+      <Ionicons name={icon as any} size={20} color={color} />
       <Text style={[styles.statValue, { color }]}>{value}</Text>
       <Text style={styles.statLabel}>{label}</Text>
     </View>
   );
 }
 
-function BarRow({ label, value, max, color, icon }: { label: string; value: number; max: number; color: string; icon?: string }) {
-  const pct = max > 0 ? Math.max(value / max, value > 0 ? 0.03 : 0) : 0;
+function BarRow({
+  label,
+  value,
+  max,
+  color,
+}: {
+  label: string;
+  value: number;
+  max: number;
+  color: string;
+}) {
+  const pct = max > 0 ? value / max : 0;
   return (
     <View style={styles.barRow}>
-      {icon && <Ionicons name={icon as any} size={14} color={color} />}
-      <Text style={styles.barLabel} numberOfLines={1}>{label}</Text>
+      <Text style={styles.barLabel}>{label}</Text>
       <View style={styles.barTrack}>
-        <View style={[styles.barFill, { width: `${Math.round(pct * 100)}%`, backgroundColor: color }]} />
+        <View
+          style={[styles.barFill, { width: `${Math.round(pct * 100)}%`, backgroundColor: color }]}
+        />
       </View>
-      <Text style={[styles.barValue, { color }]}>{value}</Text>
+      <Text style={styles.barValue}>{value}</Text>
     </View>
   );
 }
 
-function PriorityCircle({ label, value, total, color }: { label: string; value: number; total: number; color: string }) {
-  const pct = total > 0 ? Math.round((value / total) * 100) : 0;
+function DonutLegend({
+  items,
+  total,
+}: {
+  items: { label: string; value: number; color: string }[];
+  total: number;
+}) {
   return (
-    <View style={styles.priorityCircleWrap}>
-      <View style={[styles.priorityCircle, { borderColor: color, backgroundColor: color + "18" }]}>
-        <Text style={[styles.priorityCircleNum, { color }]}>{value}</Text>
-        <Text style={styles.priorityCirclePct}>{pct}%</Text>
+    <View style={styles.donut}>
+      {/* Círculo central */}
+      <View style={styles.donutCircle}>
+        <Text style={styles.donutTotal}>{total}</Text>
+        <Text style={styles.donutSub}>total</Text>
       </View>
-      <Text style={[styles.priorityCircleLabel, { color }]}>{label}</Text>
+      {/* Leyenda */}
+      <View style={styles.donutLegend}>
+        {items.map((it) => (
+          <View key={it.label} style={styles.legendRow}>
+            <View style={[styles.legendDot, { backgroundColor: it.color }]} />
+            <Text style={styles.legendLabel}>{it.label}</Text>
+            <Text style={[styles.legendValue, { color: it.color }]}>{it.value}</Text>
+          </View>
+        ))}
+      </View>
     </View>
   );
 }
 
+function priorityBg(p?: string) {
+  if (p === "P1") return colors.p1;
+  if (p === "P2") return colors.p2;
+  return colors.p3;
+}
+
+// ── Estilos ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
-  scroll: { padding: 16, gap: 8 },
-
-  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 },
-  title:    { color: colors.text, fontSize: 24, fontWeight: "900" },
-  subtitle: { color: colors.textMuted, fontSize: 13, marginTop: 2 },
-  badgeWrap: {
-    flexDirection: "row", alignItems: "center", gap: 5,
-    backgroundColor: colors.warning + "18",
-    borderWidth: 1, borderColor: colors.warning + "44",
-    borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6,
+  scroll: { padding: 20, gap: 4 },
+  header: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 16 },
+  h1: { color: colors.text, fontSize: 20, fontWeight: "800" },
+  sectionTitle: {
+    color: colors.textMuted,
+    fontSize: 12,
+    fontWeight: "700",
+    letterSpacing: 1,
+    textTransform: "uppercase",
+    marginTop: 20,
+    marginBottom: 8,
   },
-  badgeTxt: { color: colors.warning, fontSize: 11, fontWeight: "800", letterSpacing: 1 },
 
-  statsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 4 },
+  // Tarjetas resumen
+  cards: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
   statCard: {
-    width: (width - 52) / 3,
+    flex: 1,
+    minWidth: (width - 60) / 2,
     backgroundColor: colors.surface,
-    borderRadius: 12, borderWidth: 1,
-    padding: 12, gap: 4, alignItems: "flex-start",
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 14,
+    gap: 4,
+    alignItems: "flex-start",
   },
-  statValue: { fontSize: 26, fontWeight: "900" },
-  statLabel: { color: colors.textMuted, fontSize: 11 },
+  statValue: { fontSize: 28, fontWeight: "900" },
+  statLabel: { color: colors.textMuted, fontSize: 12 },
 
-  sectionLabel: {
-    color: colors.textMuted, fontSize: 11, fontWeight: "700",
-    letterSpacing: 1, textTransform: "uppercase",
-    marginTop: 12, marginBottom: 8,
+  // Gráfico de barras
+  chartBox: {
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 16,
+    gap: 12,
   },
-
-  card: {
-    backgroundColor: colors.surface, borderRadius: 14,
-    borderWidth: 1, borderColor: colors.border,
-    padding: 16, gap: 12,
+  barRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  barLabel: { color: colors.text, fontSize: 13, width: 90 },
+  barTrack: {
+    flex: 1,
+    height: 10,
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: 999,
+    overflow: "hidden",
   },
+  barFill: { height: "100%", borderRadius: 999 },
+  barValue: { color: colors.textMuted, fontSize: 12, width: 24, textAlign: "right" },
 
-  barRow:   { flexDirection: "row", alignItems: "center", gap: 8 },
-  barLabel: { color: colors.text, fontSize: 12, width: 90 },
-  barTrack: { flex: 1, height: 9, backgroundColor: colors.surfaceAlt, borderRadius: 999, overflow: "hidden" },
-  barFill:  { height: "100%", borderRadius: 999 },
-  barValue: { fontSize: 12, fontWeight: "700", width: 22, textAlign: "right" },
-
-  priorityRow: { flexDirection: "row", justifyContent: "space-around" },
-  priorityCircleWrap: { alignItems: "center", gap: 6 },
-  priorityCircle: {
-    width: 72, height: 72, borderRadius: 36,
-    borderWidth: 3, alignItems: "center", justifyContent: "center",
+  // Donut
+  donut: { flexDirection: "row", alignItems: "center", gap: 20 },
+  donutCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    borderWidth: 6,
+    borderColor: colors.brand,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: colors.surfaceAlt,
   },
-  priorityCircleNum:   { fontSize: 22, fontWeight: "900", color: colors.text },
-  priorityCirclePct:   { fontSize: 11, color: colors.textMuted },
-  priorityCircleLabel: { fontSize: 13, fontWeight: "800" },
+  donutTotal: { color: colors.text, fontSize: 22, fontWeight: "900" },
+  donutSub: { color: colors.textMuted, fontSize: 10 },
+  donutLegend: { flex: 1, gap: 8 },
+  legendRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  legendDot: { width: 10, height: 10, borderRadius: 5 },
+  legendLabel: { flex: 1, color: colors.text, fontSize: 13 },
+  legendValue: { fontSize: 14, fontWeight: "800" },
 
+  // Alertas recientes
   emptyBox: { alignItems: "center", gap: 8, padding: 24 },
-  emptyTxt: { color: colors.textMuted, fontSize: 14 },
-
+  emptyText: { color: colors.textMuted, fontSize: 14 },
   alertCard: {
-    backgroundColor: colors.surface, borderRadius: 12,
-    borderWidth: 1, borderColor: colors.border,
-    borderLeftWidth: 4, padding: 14, gap: 5, marginBottom: 8,
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 14,
+    gap: 6,
+    marginBottom: 8,
   },
-  alertTop:      { flexDirection: "row", alignItems: "center", gap: 8 },
-  priorityBadge: { borderWidth: 1, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
-  priorityTxt:   { fontSize: 11, fontWeight: "800" },
-  alertType:     { color: colors.text, fontWeight: "700", fontSize: 13, flex: 1 },
-  statusBadge:   { borderWidth: 1, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 },
-  statusTxt:     { fontSize: 11, fontWeight: "700" },
-  alertText:     { color: colors.textMuted, fontSize: 13 },
-  alertAuthor:   { color: colors.textMuted, fontSize: 11 },
+  alertHead: { flexDirection: "row", alignItems: "center", gap: 8 },
+  pill: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999 },
+  pillText: { color: colors.text, fontWeight: "800", fontSize: 11 },
+  alertType: { color: colors.text, fontWeight: "700", fontSize: 13 },
+  statusDot: {
+    marginLeft: "auto",
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  statusTxt: { fontSize: 11, fontWeight: "700" },
+  alertText: { color: colors.text, fontSize: 13 },
+  alertReason: { color: colors.textMuted, fontSize: 11 },
+
+  iaBanner: {
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+    backgroundColor: colors.warning + "11",
+    borderWidth: 1, borderColor: colors.warning + "44",
+    borderRadius: 14, padding: 14, marginBottom: 4,
+  },
+  iaBannerLeft:  { flexDirection: "row", alignItems: "center", gap: 12 },
+  iaBannerTitle: { color: colors.text, fontSize: 14, fontWeight: "700" },
+  iaBannerSub:   { color: colors.textMuted, fontSize: 12 },
 });

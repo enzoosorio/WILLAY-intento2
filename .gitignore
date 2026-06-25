@@ -31,3 +31,4 @@ desktop.ini
 # ── IDE ───────────────────────────────────────────────────────────────────────
 .idea/
 *.iml
+"functions/serviceAccountKey.json" 

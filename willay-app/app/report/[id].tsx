@@ -123,6 +123,64 @@ export default function ReportDetail() {
           )}
         </View>
 
+        {/* Línea de tiempo del estado — para el vecino */}
+        {!isOperator && (
+          <View style={styles.timeline}>
+            <Text style={styles.sectionLabel}>SEGUIMIENTO DE TU REPORTE</Text>
+            {[
+              { key: "received",  label: "Recibido",    icon: "time"             as const, color: colors.warning },
+              { key: "attending", label: "En atención", icon: "eye"              as const, color: colors.brand   },
+              { key: "closed",    label: "Resuelto",    icon: "checkmark-circle" as const, color: colors.success },
+            ].map((step, i) => {
+              const steps = ["received", "attending", "closed", "dismissed"];
+              const currentIdx = steps.indexOf(data.status);
+              const stepIdx    = steps.indexOf(step.key);
+              const isDone     = currentIdx >= stepIdx && data.status !== "dismissed";
+              const isCurrent  = data.status === step.key;
+              return (
+                <View key={step.key} style={styles.timelineRow}>
+                  <View style={styles.timelineLeft}>
+                    <View style={[
+                      styles.timelineDot,
+                      { backgroundColor: isDone ? step.color : colors.surfaceAlt,
+                        borderColor: isDone ? step.color : colors.border,
+                      },
+                    ]}>
+                      <Ionicons name={step.icon} size={14} color={isDone ? "white" : colors.textMuted} />
+                    </View>
+                    {i < 2 && (
+                      <View style={[styles.timelineLine, { backgroundColor: isDone && currentIdx > stepIdx ? step.color : colors.border }]} />
+                    )}
+                  </View>
+                  <View style={styles.timelineContent}>
+                    <Text style={[styles.timelineLabel, { color: isDone ? colors.text : colors.textMuted, fontWeight: isCurrent ? "800" : "600" }]}>
+                      {step.label}
+                    </Text>
+                    {isCurrent && (
+                      <Text style={[styles.timelineDesc, { color: step.color }]}>
+                        {step.key === "received"  ? "Tu reporte fue recibido por el Serenazgo" :
+                         step.key === "attending" ? "El Serenazgo está atendiendo tu reporte" :
+                         "Tu reporte fue resuelto"}
+                      </Text>
+                    )}
+                  </View>
+                  {isCurrent && (
+                    <View style={[styles.timelineActiveBadge, { backgroundColor: step.color }]}>
+                      <Text style={styles.timelineActiveTxt}>ACTUAL</Text>
+                    </View>
+                  )}
+                </View>
+              );
+            })}
+            {data.status === "dismissed" && (
+              <View style={styles.dismissedBox}>
+                <Ionicons name="close-circle" size={20} color={colors.textMuted} />
+                <Text style={styles.dismissedTxt}>Este reporte fue descartado por el operador</Text>
+              </View>
+            )}
+          </View>
+        )}
+
         {/* Info del incidente */}
         <View style={styles.infoCard}>
           <Text style={styles.sectionLabel}>INFORMACIÓN DEL INCIDENTE</Text>
@@ -309,7 +367,32 @@ const styles = StyleSheet.create({
   },
   actionTxt: { color: "white", fontWeight: "800", fontSize: 14 },
 
-  modalBg:   { flex: 1, backgroundColor: "rgba(0,0,0,0.92)", alignItems: "center", justifyContent: "center" },
+  // Timeline
+  timeline: {
+    backgroundColor: colors.surface, borderRadius: 14,
+    borderWidth: 1, borderColor: colors.border,
+    padding: 16, gap: 0,
+  },
+  timelineRow:    { flexDirection: "row", gap: 12, minHeight: 56 },
+  timelineLeft:   { alignItems: "center", width: 32 },
+  timelineDot: {
+    width: 32, height: 32, borderRadius: 16,
+    borderWidth: 2, alignItems: "center", justifyContent: "center",
+  },
+  timelineLine: { flex: 1, width: 2, marginVertical: 2 },
+  timelineContent: { flex: 1, paddingTop: 4, paddingBottom: 12 },
+  timelineLabel:   { fontSize: 14, marginBottom: 2 },
+  timelineDesc:    { fontSize: 12, lineHeight: 16 },
+  timelineActiveBadge: {
+    paddingHorizontal: 8, paddingVertical: 3,
+    borderRadius: 999, alignSelf: "flex-start", marginTop: 4,
+  },
+  timelineActiveTxt: { color: "white", fontSize: 10, fontWeight: "800" },
+  dismissedBox: {
+    flexDirection: "row", alignItems: "center", gap: 8,
+    backgroundColor: colors.surfaceAlt, borderRadius: 10, padding: 12, marginTop: 8,
+  },
+  dismissedTxt: { color: colors.textMuted, fontSize: 13, flex: 1 },
   photoFull: { width: "100%", height: "80%" },
   closeBtn:  {
     position: "absolute", top: 48, right: 20,
