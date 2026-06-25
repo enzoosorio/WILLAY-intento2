@@ -22,7 +22,7 @@ import * as ImageManipulator from "expo-image-manipulator";
 import * as FileSystem from "expo-file-system/legacy";
 import { env } from "@/lib/env";
 import type { FaceEmbedder } from "./types";
-
+import { NativeModules} from 'react-native'
 // Tipos locales mínimos de onnxruntime-react-native (evita exigir el paquete
 // instalado para que el typecheck pase; en runtime se resuelve via require()).
 type OrtTensor = { data: ArrayBufferView };
@@ -60,6 +60,14 @@ async function ensureModelFile(url: string): Promise<string> {
 
 async function load() {
   if (_session) return;
+    console.log("===== ONNX DEBUG =====");
+  console.log("NativeModules.Onnxruntime =", NativeModules.Onnxruntime);
+  console.log(
+    "NativeModules keys =",
+    Object.keys(NativeModules)
+  );
+  console.log("======================");
+  
   try {
     const url = env.faceModelUrl;
     if (!url) throw new Error("FACE_MODEL_URL no configurada");
