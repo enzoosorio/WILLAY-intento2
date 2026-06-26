@@ -158,6 +158,22 @@ export default function Dashboard() {
           })}
         </View>
 
+        {/* Botón exportar PDF */}
+        <TouchableOpacity
+          style={styles.exportBanner}
+          onPress={() => router.push("/export-pdf" as never)}
+          activeOpacity={0.85}
+        >
+          <View style={styles.iaBannerLeft}>
+            <Ionicons name="document-text" size={22} color={colors.success} />
+            <View>
+              <Text style={styles.iaBannerTitle}>Exportar Reporte PDF</Text>
+              <Text style={styles.iaBannerSub}>Incidencias del día o por rango</Text>
+            </View>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+        </TouchableOpacity>
+
         {/* Botón estadísticas IA */}
         <TouchableOpacity
           style={styles.iaBanner}
@@ -397,6 +413,12 @@ const styles = StyleSheet.create({
   alertText: { color: colors.text, fontSize: 13 },
   alertReason: { color: colors.textMuted, fontSize: 11 },
 
+  exportBanner: {
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+    backgroundColor: colors.success + "11",
+    borderWidth: 1, borderColor: colors.success + "44",
+    borderRadius: 14, padding: 14, marginBottom: 4,
+  },
   iaBanner: {
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
     backgroundColor: colors.warning + "11",
