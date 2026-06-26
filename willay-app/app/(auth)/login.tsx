@@ -1,17 +1,15 @@
 // ════════════════════════════════════════════════════════════════════
-// UBICACIÓN: willay-app/app/login.tsx
-// Pantalla de login principal
+// UBICACIÓN: willay-app/app/(auth)/login.tsx
+// Login sin acceso de invitado
 // ════════════════════════════════════════════════════════════════════
 import { useState } from "react";
 import {
   View, Text, StyleSheet, TouchableOpacity,
   ActivityIndicator, Alert, Image, TextInput, ScrollView,
 } from "react-native";
-import { signInAnonymously } from "firebase/auth";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
-import { getFirebaseAuth } from "@/lib/firebase";
 import { signInWithEmail } from "@/lib/auth";
 import { colors } from "@/theme/colors";
 
@@ -25,13 +23,11 @@ const FIREBASE_ERRORS: Record<string, string> = {
 };
 
 export default function LoginScreen() {
-  const auth = getFirebaseAuth();
   const [email,        setEmail]        = useState("");
   const [password,     setPassword]     = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error,        setError]        = useState("");
   const [loading,      setLoading]      = useState(false);
-  const [loadingGuest, setLoadingGuest] = useState(false);
 
   async function handleSignIn() {
     setError("");
@@ -47,10 +43,6 @@ export default function LoginScreen() {
     }
   }
 
-  async function handleGuestLogin() {
-    router.push("/(auth)/role-select" as never);
-  }
-
   return (
     <View style={styles.container}>
       <ScrollView
@@ -58,16 +50,14 @@ export default function LoginScreen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Banner superior estilo municipalidad */}
+        {/* Banner */}
         <View style={styles.banner}>
           <Image
             source={require("../../assets/images/municipalidad.jpg")}
             style={styles.bannerImg}
             resizeMode="cover"
           />
-          {/* Overlay oscuro */}
           <View style={styles.bannerOverlay} />
-          {/* Logo encima */}
           <Image
             source={require("../../assets/images/logo_willay.png")}
             style={styles.bannerLogo}
@@ -76,7 +66,10 @@ export default function LoginScreen() {
         </View>
 
         {/* Formulario */}
-        <View style={[styles.form, { paddingHorizontal: 24, paddingTop: 60 }]}>
+        <View style={styles.form}>
+          <Text style={styles.title}>Bienvenido a Willay</Text>
+          <Text style={styles.sub}>Seguridad ciudadana · Puente Piedra</Text>
+
           <View style={styles.inputWrap}>
             <Ionicons name="mail-outline" size={20} color={colors.textMuted} />
             <TextInput
@@ -120,21 +113,18 @@ export default function LoginScreen() {
             </View>
           )}
 
-          {/* Botón INICIAR */}
           <TouchableOpacity
             style={[styles.mainBtn, loading && { opacity: 0.7 }]}
             onPress={handleSignIn}
-            disabled={loading || loadingGuest}
+            disabled={loading}
             activeOpacity={0.85}
           >
-            {loading ? (
-              <ActivityIndicator color="white" />
-            ) : (
-              <Text style={styles.mainBtnTxt}>INICIAR</Text>
-            )}
+            {loading
+              ? <ActivityIndicator color="white" />
+              : <Text style={styles.mainBtnTxt}>INICIAR SESIÓN</Text>
+            }
           </TouchableOpacity>
 
-          {/* Registro */}
           <TouchableOpacity
             style={styles.registerRow}
             onPress={() => router.push("/register" as never)}
@@ -146,43 +136,31 @@ export default function LoginScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Separador */}
-        <View style={[styles.separator, { paddingHorizontal: 24 }]}>
-          <View style={styles.line} />
-          <Text style={styles.separatorTxt}>o continúa sin cuenta</Text>
-          <View style={styles.line} />
+        {/* Info roles */}
+        <View style={styles.rolesCard}>
+          <Text style={styles.rolesTitle}>¿Qué tipo de usuario eres?</Text>
+          <View style={styles.roleItem}>
+            <View style={[styles.roleIcon, { backgroundColor: colors.brand + "22" }]}>
+              <Ionicons name="people" size={20} color={colors.brand} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.roleLabel}>Vecino</Text>
+              <Text style={styles.roleDesc}>Reporta incidentes y envía alertas desde tu zona</Text>
+            </View>
+          </View>
+          <View style={styles.roleItem}>
+            <View style={[styles.roleIcon, { backgroundColor: colors.warning + "22" }]}>
+              <Ionicons name="shield-checkmark" size={20} color={colors.warning} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.roleLabel}>Serenazgo</Text>
+              <Text style={styles.roleDesc}>Gestiona alertas y reportes del distrito</Text>
+            </View>
+          </View>
         </View>
 
-        {/* Entrar como invitado */}
-        <View style={{ paddingHorizontal: 24 }}>
-        <TouchableOpacity
-          style={[styles.guestBtn, loadingGuest && { opacity: 0.7 }]}
-          onPress={handleGuestLogin}
-          disabled={loading || loadingGuest}
-          activeOpacity={0.85}
-        >
-          {loadingGuest ? (
-            <ActivityIndicator color={colors.textMuted} />
-          ) : (
-            <>
-              <Ionicons name="person-outline" size={18} color={colors.textMuted} />
-              <Text style={styles.guestBtnTxt}>Entrar como invitado</Text>
-            </>
-          )}
-        </TouchableOpacity>
-        </View>
-
-        <TouchableOpacity onPress={() => router.push("/(auth)/privacy" as never)} style={{ marginTop: 8 }}>
+        <TouchableOpacity onPress={() => router.push("/(auth)/privacy" as never)} style={{ marginTop: 16 }}>
           <Text style={styles.privacy}>Política de privacidad</Text>
-        </TouchableOpacity>
-
-        {/* Acceso operador discreto */}
-        <TouchableOpacity
-          style={styles.operatorBtn}
-          onPress={() => router.push("/(auth)/role-select" as never)}
-        >
-          <Ionicons name="shield" size={14} color={colors.textMuted} />
-          <Text style={styles.operatorTxt}>Acceso Serenazgo / Operador</Text>
         </TouchableOpacity>
 
         <View style={{ height: 32 }} />
@@ -193,47 +171,27 @@ export default function LoginScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
-  scroll: { paddingBottom: 16 },
+  scroll:    { paddingBottom: 16 },
 
-  // Banner
-  banner: {
-    width: "100%",
-    height: 220,
-    position: "relative",
-    marginBottom: 24,
-  },
-  bannerImg: {
-    width: "100%",
-    height: "100%",
-  },
-  bannerOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(11,18,32,0.55)",
-  },
+  banner: { width: "100%", height: 220, position: "relative", marginBottom: 24 },
+  bannerImg: { width: "100%", height: "100%" },
+  bannerOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(11,18,32,0.55)" },
   bannerLogo: {
-    position: "absolute",
-    bottom: -50,
-    alignSelf: "center",
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    overflow: "hidden",
-    borderWidth: 3,
-    borderColor: colors.brand,
+    position: "absolute", bottom: -50, alignSelf: "center",
+    width: 140, height: 140, borderRadius: 70,
+    overflow: "hidden", borderWidth: 3, borderColor: colors.brand,
   },
 
-  // Form
-  form: { gap: 12, marginBottom: 8 },
+  form: { paddingHorizontal: 24, paddingTop: 60, gap: 12, marginBottom: 24 },
+
+  title: { color: colors.text, fontSize: 24, fontWeight: "900", textAlign: "center" },
+  sub:   { color: colors.textMuted, fontSize: 13, textAlign: "center", marginBottom: 8 },
+
   inputWrap: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    backgroundColor: colors.surface,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: 16,
-    height: 56,
+    flexDirection: "row", alignItems: "center", gap: 10,
+    backgroundColor: colors.surface, borderRadius: 14,
+    borderWidth: 1, borderColor: colors.border,
+    paddingHorizontal: 16, height: 56,
   },
   input: { flex: 1, color: colors.text, fontSize: 16 },
 
@@ -246,47 +204,29 @@ const styles = StyleSheet.create({
   errorTxt: { color: colors.danger, fontSize: 13, flex: 1 },
 
   mainBtn: {
-    backgroundColor: colors.brand,
-    borderRadius: 16,
-    paddingVertical: 18,
-    alignItems: "center",
+    backgroundColor: colors.brand, borderRadius: 16,
+    paddingVertical: 18, alignItems: "center",
     shadowColor: colors.brand,
     shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.4,
-    shadowRadius: 14,
-    elevation: 10,
+    shadowOpacity: 0.4, shadowRadius: 14, elevation: 10,
   },
-  mainBtnTxt: { color: "white", fontSize: 17, fontWeight: "900", letterSpacing: 1 },
+  mainBtnTxt: { color: "white", fontSize: 16, fontWeight: "900", letterSpacing: 1 },
 
-  registerRow: { alignItems: "center", paddingVertical: 2 },
+  registerRow: { alignItems: "center", paddingVertical: 4 },
   registerTxt: { color: colors.textMuted, fontSize: 14 },
-  registerLink: { color: colors.brand, fontWeight: "700" },
+  registerLink:{ color: colors.brand, fontWeight: "700" },
 
-  // Separador
-  separator: { flexDirection: "row", alignItems: "center", gap: 10, marginVertical: 16 },
-  line: { flex: 1, height: 1, backgroundColor: colors.border },
-  separatorTxt: { color: colors.textMuted, fontSize: 12 },
-
-  // Invitado
-  guestBtn: {
-    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
-    borderWidth: 1.5, borderColor: colors.border,
-    borderRadius: 16, paddingVertical: 16,
-    marginBottom: 10,
+  rolesCard: {
+    marginHorizontal: 24,
+    backgroundColor: colors.surface,
+    borderRadius: 16, borderWidth: 1, borderColor: colors.border,
+    padding: 20, gap: 16,
   },
-  guestBtnTxt: { color: colors.textMuted, fontSize: 15, fontWeight: "600" },
-
-  // Demo
-  demoBtn: {
-    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6,
-    paddingVertical: 10, marginBottom: 16,
-  },
-  demoBtnTxt: { color: colors.textMuted, fontSize: 13 },
+  rolesTitle: { color: colors.text, fontSize: 14, fontWeight: "700", marginBottom: 4 },
+  roleItem:   { flexDirection: "row", alignItems: "center", gap: 14 },
+  roleIcon:   { width: 44, height: 44, borderRadius: 12, alignItems: "center", justifyContent: "center" },
+  roleLabel:  { color: colors.text, fontSize: 14, fontWeight: "700" },
+  roleDesc:   { color: colors.textMuted, fontSize: 12, marginTop: 2 },
 
   privacy: { color: colors.textMuted, fontSize: 12, textAlign: "center" },
-  operatorBtn: {
-    flexDirection: "row", alignItems: "center", justifyContent: "center",
-    gap: 6, paddingVertical: 12, marginTop: 4,
-  },
-  operatorTxt: { color: colors.textMuted, fontSize: 12 },
 });
