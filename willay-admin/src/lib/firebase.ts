@@ -11,6 +11,11 @@ const firebaseConfig = {
   appId:             import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
+// App principal — sesión del admin
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db   = getFirestore(app);
+
+// App secundaria — solo para crear usuarios sin perder la sesión del admin
+const secondaryApp = initializeApp(firebaseConfig, "secondary");
+export const authSecondary = getAuth(secondaryApp);

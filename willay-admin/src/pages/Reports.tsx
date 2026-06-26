@@ -6,6 +6,7 @@ interface Report {
   id: string; priority: string; status: string; type: string;
   categoryLabel: string; text: string; zone: string;
   authorName: string; createdAt: any;
+  location?: { latitude: number; longitude: number };
 }
 
 function pColor(p: string) {
@@ -60,6 +61,18 @@ export default function Reports() {
     if (selected?.id === id) setSelected({ ...selected, status });
   }
 
+  const hasLocation = selected?.location?.latitude && selected?.location?.longitude;
+
+  function openMaps() {
+    if (!hasLocation) return;
+    window.open(`https://www.google.com/maps?q=${selected!.location!.latitude},${selected!.location!.longitude}&z=17`, "_blank");
+  }
+
+  function openStreetView() {
+    if (!hasLocation) return;
+    window.open(`https://www.google.com/maps?q=&layer=c&cbll=${selected!.location!.latitude},${selected!.location!.longitude}`, "_blank");
+  }
+
   return (
     <div style={{ display:"flex", gap:20, height:"calc(100vh - 64px)" }}>
 
@@ -90,6 +103,7 @@ export default function Reports() {
           {filtered.map(r => {
             const pc = pColor(r.priority);
             const isSelected = selected?.id === r.id;
+            const hasLoc = r.location?.latitude && r.location?.longitude;
             return (
               <div
                 key={r.id}
@@ -109,6 +123,7 @@ export default function Reports() {
                   <span style={{ color:"#E5E7EB", fontSize:13, fontWeight:600 }}>
                     {r.type==="panic" ? "🚨 Alerta de Pánico" : r.categoryLabel||"Reporte"}
                   </span>
+                  {hasLoc && <span style={{ color:"#10B981", fontSize:11 }}>📍 GPS</span>}
                   <span style={{ marginLeft:"auto", padding:"2px 8px", borderRadius:6, fontSize:11, fontWeight:600, background:`${sColor(r.status)}22`, color:sColor(r.status) }}>
                     {sLabel(r.status)}
                   </span>
@@ -131,9 +146,10 @@ export default function Reports() {
       </div>
 
       {/* Detalle */}
-      <div style={{ width:360, background:"#161b22", border:"1px solid #21262d", borderRadius:16, padding:24, display:"flex", flexDirection:"column", gap:16, flexShrink:0, overflow:"auto" }}>
+      <div style={{ width:380, background:"#161b22", border:"1px solid #21262d", borderRadius:16, padding:24, display:"flex", flexDirection:"column", gap:16, flexShrink:0, overflow:"auto" }}>
         {selected ? (
           <>
+            {/* Header detalle */}
             <div>
               <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:12 }}>
                 <span style={{ padding:"4px 14px", borderRadius:8, fontSize:13, fontWeight:800, background:`${pColor(selected.priority)}22`, color:pColor(selected.priority), border:`1px solid ${pColor(selected.priority)}44` }}>
@@ -151,6 +167,7 @@ export default function Reports() {
               </p>
             </div>
 
+            {/* Info */}
             <div style={{ background:"#0d1117", borderRadius:12, padding:16, display:"flex", flexDirection:"column", gap:10 }}>
               {[
                 { label:"Vecino",  value: selected.authorName||"—" },
@@ -165,6 +182,46 @@ export default function Reports() {
               ))}
             </div>
 
+            {/* Ubicación GPS */}
+            <div>
+              <div style={{ color:"#6B7280", fontSize:11, fontWeight:600, letterSpacing:1, textTransform:"uppercase", marginBottom:10 }}>
+                Ubicación GPS
+              </div>
+              {hasLocation ? (
+                <>
+                  <div style={{ background:"#0d1117", borderRadius:10, padding:12, marginBottom:10 }}>
+                    <div style={{ color:"#10B981", fontSize:13, fontWeight:600, marginBottom:2 }}>
+                      🌐 {selected.location!.latitude.toFixed(6)}, {selected.location!.longitude.toFixed(6)}
+                    </div>
+                    <div style={{ color:"#6B7280", fontSize:11 }}>Coordenadas exactas del reporte</div>
+                  </div>
+                  <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+                    <button onClick={openMaps} style={{
+                      background:"#1e3a5f", border:"1px solid #3B82F644",
+                      borderRadius:10, padding:"12px 16px", color:"#3B82F6",
+                      cursor:"pointer", fontSize:13, fontWeight:700,
+                      display:"flex", alignItems:"center", justifyContent:"center", gap:8,
+                    }}>
+                      🗺️ Ver en Google Maps
+                    </button>
+                    <button onClick={openStreetView} style={{
+                      background:"#1e3a2f", border:"1px solid #10B98144",
+                      borderRadius:10, padding:"12px 16px", color:"#10B981",
+                      cursor:"pointer", fontSize:13, fontWeight:700,
+                      display:"flex", alignItems:"center", justifyContent:"center", gap:8,
+                    }}>
+                      📷 Street View — Ver la calle
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div style={{ background:"#0d1117", borderRadius:10, padding:14, textAlign:"center", color:"#4B5563", fontSize:13 }}>
+                  Sin ubicación GPS disponible
+                </div>
+              )}
+            </div>
+
+            {/* Cambiar estado */}
             <div>
               <div style={{ color:"#6B7280", fontSize:11, fontWeight:600, letterSpacing:1, textTransform:"uppercase", marginBottom:10 }}>
                 Cambiar estado
@@ -195,7 +252,7 @@ export default function Reports() {
         ) : (
           <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", color:"#6B7280", gap:12 }}>
             <div style={{ fontSize:48 }}>📋</div>
-            <div style={{ fontSize:14, textAlign:"center" }}>Selecciona un reporte para ver el detalle</div>
+            <div style={{ fontSize:14, textAlign:"center" }}>Selecciona un reporte para ver el detalle y su ubicación</div>
           </div>
         )}
       </div>
