@@ -1,3 +1,6 @@
+// ════════════════════════════════════════════════════════════════════
+// UBICACIÓN: willay-app/app/(tabs)/_layout.tsx
+// ════════════════════════════════════════════════════════════════════
 import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -14,107 +17,117 @@ function tabIcon(name: IconName) {
 }
 
 export default function TabsLayout() {
-  const { user } = useAuthUser();
-  const { data: profile } = useUserDoc(user?.uid);
+  const { user }              = useAuthUser();
+  const { data: profile }     = useUserDoc(user?.uid);
   const isOperator = profile?.role === "operator";
-  const insets = useSafeAreaInsets();
+  const insets     = useSafeAreaInsets();
 
   return (
     <Tabs
       screenOptions={{
-        headerStyle: { backgroundColor: colors.surface },
-        headerTintColor: colors.text,
+        headerStyle:            { backgroundColor: colors.surface },
+        headerTintColor:        colors.text,
         tabBarStyle: {
           backgroundColor: colors.surface,
-          borderTopColor: colors.border,
-          height: 58 + insets.bottom,
-          paddingBottom: insets.bottom > 0 ? insets.bottom : 8,
-          paddingTop: 6,
+          borderTopColor:  colors.border,
+          height:          58 + insets.bottom,
+          paddingBottom:   insets.bottom > 0 ? insets.bottom : 8,
+          paddingTop:      6,
         },
-        tabBarActiveTintColor: colors.brand,
+        tabBarActiveTintColor:   colors.brand,
         tabBarInactiveTintColor: colors.textMuted,
-        tabBarLabelStyle: { fontSize: 10, fontWeight: "600" },
-        tabBarItemStyle: { paddingHorizontal: 2 },
+        tabBarLabelStyle:        { fontSize: 10, fontWeight: "600" },
+        tabBarItemStyle:         { paddingHorizontal: 2 },
       }}
     >
       {/* ════════ VECINO ════════ */}
       <Tabs.Screen
         name="index"
         options={{
-          title: "Inicio",
-          tabBarIcon: tabIcon("home"),
-          href: isOperator ? null : "/(tabs)",
+          title:       "Inicio",
+          tabBarIcon:  tabIcon("home"),
+          href:        isOperator ? null : "/(tabs)",
         }}
       />
       <Tabs.Screen
         name="my-reports"
         options={{
-          title: "Historial",
+          title:      "Historial",
           tabBarIcon: tabIcon("list"),
-          href: isOperator ? null : "/(tabs)/my-reports",
+          href:       isOperator ? null : "/(tabs)/my-reports",
         }}
       />
       <Tabs.Screen
         name="missing"
         options={{
-          title: "Personas",
+          title:      "Personas",
           tabBarIcon: tabIcon("people"),
-          href: null,
+          href:       null,
         }}
       />
-      {/* Accesible desde el grid, oculta en tab bar */}
       <Tabs.Screen
         name="report"
         options={{
-          title: "Reportar",
+          title:      "Reportar",
           tabBarIcon: tabIcon("create"),
-          href: null,
+          href:       null,
         }}
       />
 
-      {/* ════════ ADMIN ════════ */}
+      {/* ════════ OPERADOR ════════ */}
       <Tabs.Screen
         name="operator"
         options={{
-          title: "Alertas",
-          tabBarIcon: tabIcon("shield-checkmark"),
+          title:                 "Alertas",
+          tabBarIcon:            tabIcon("shield-checkmark"),
           tabBarActiveTintColor: colors.warning,
-          href: isOperator ? "/(tabs)/operator" : null,
+          href:                  isOperator ? "/(tabs)/operator" : null,
         }}
       />
       <Tabs.Screen
         name="mapa"
         options={{
-          title: "Mapa",
-          tabBarIcon: tabIcon("map"),
+          title:                 "Mapa",
+          tabBarIcon:            tabIcon("map"),
           tabBarActiveTintColor: colors.warning,
-          href: isOperator ? "/(tabs)/mapa" : null,
+          href:                  isOperator ? "/(tabs)/mapa" : null,
         }}
       />
       <Tabs.Screen
         name="dashboard"
         options={{
-          title: "Dashboard",
-          tabBarIcon: tabIcon("stats-chart"),
+          title:                 "Dashboard",
+          tabBarIcon:            tabIcon("stats-chart"),
           tabBarActiveTintColor: colors.warning,
-          href: isOperator ? "/(tabs)/dashboard" : null,
+          href:                  isOperator ? "/(tabs)/dashboard" : null,
         }}
       />
-      {/* NUEVA: el admin ve todas las personas y puede BUSCAR por rostro */}
       <Tabs.Screen
-        name="buscar"
+        name="chat-operador"
         options={{
-          title: "Buscar",
-          tabBarIcon: tabIcon("scan-circle"),
+          title:                 "Chat",
+          tabBarIcon:            tabIcon("chatbubbles"),
           tabBarActiveTintColor: colors.warning,
-          href: "/(tabs)/buscar",
+          href:                  isOperator ? "/(tabs)/chat-operador" : null,
         }}
       />
 
-      {/* ════════ PERFIL (ambos) ════════ */}
+      {/* ════════ AMBOS ════════ */}
+      <Tabs.Screen
+        name="buscar"
+        options={{
+          title:                 "Buscar",
+          tabBarIcon:            tabIcon("scan-circle"),
+          tabBarActiveTintColor: colors.warning,
+          href:                  "/(tabs)/buscar",
+        }}
+      />
       <Tabs.Screen
         name="profile"
-        options={{ title: "Perfil", tabBarIcon: tabIcon("person") }}
+        options={{
+          title:      "Perfil",
+          tabBarIcon: tabIcon("person"),
+        }}
       />
     </Tabs>
   );
