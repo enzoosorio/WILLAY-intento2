@@ -9,6 +9,9 @@ import Dashboard from "./pages/Dashboard";
 import Operators from "./pages/Operators";
 import Reports from "./pages/Reports";
 import MapView from "./pages/MapView";
+import Chat from "./pages/Chat";
+import History from "./pages/History";
+import MissingPersons from "./pages/MissingPersons";
 import Layout from "./components/Layout";
 
 export default function App() {
@@ -31,7 +34,7 @@ export default function App() {
 
   if (loading) return (
     <div style={{ display:"flex", alignItems:"center", justifyContent:"center", height:"100vh", background:"#0d1117" }}>
-      <div style={{ color:"#E53E3E", fontSize:24, fontWeight:700 }}>Cargando WILLAY Admin...</div>
+      <div style={{ color:"#EF4444", fontSize:24, fontWeight:700 }}>Cargando WILLAY Admin...</div>
     </div>
   );
 
@@ -45,6 +48,9 @@ export default function App() {
           <Route path="/operators" element={<Operators />} />
           <Route path="/reports"   element={<Reports />} />
           <Route path="/map"       element={<MapView />} />
+          <Route path="/chat"      element={<Chat />} />
+          <Route path="/history"   element={<History />} />
+          <Route path="/missing"   element={<MissingPersons />} />
           <Route path="*"          element={<Navigate to="/" />} />
         </Routes>
       </Layout>
