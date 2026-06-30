@@ -9,11 +9,12 @@ import { colors } from "@/theme/colors";
 
 const { height: SH, width: SW } = Dimensions.get("window");
 
-const GROQ_API_KEY = "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";
+const GROQ_API_KEY = "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";
 const GROQ_MODEL   = "llama-3.1-8b-instant";
 const SYSTEM_PROMPT = `Eres WillayBot, el asistente de seguridad ciudadana del distrito de Puente Piedra, Lima, Peru.
 Ayuda a los vecinos en situaciones de emergencia. Responde en espanol, maximo 3-4 oraciones.
-Emergencias: Serenazgo (01)219-6220, Policia 105, Bomberos 116.`;
+El distrito tiene 3 zonas con 17 sectores: SUR (La Ensenada, Laderas, Chillon, Shangri-La), CENTRO (Tambo Inga Oeste, Tambo Inga Este, Pampa Libre, Gallinazos, Santa Rosa, Cercado, Las Vegas, La Grama, Copacabana), NORTE (El Dorado, Leoncio Prado, Jerusalem, Lomas).
+Emergencias: Serenazgo (01)219-6220, Policia 105, Bomberos 116, SAMU 106.`;
 
 interface Msg { id: string; role: "user" | "bot"; text: string; loading?: boolean; }
 
@@ -96,7 +97,6 @@ export function FloatingBot() {
     }
   }
 
-  // Dimensiones dinámicas
   const chatBottom = fullscreen ? 0 : 90 + kbH;
   const chatTop    = fullscreen ? 48 : undefined;
   const chatHeight = fullscreen ? undefined : SH * 0.65;
@@ -106,17 +106,14 @@ export function FloatingBot() {
 
   return (
     <>
-      {/* Overlay */}
       {open && <Pressable style={styles.overlay} onPress={() => { setOpen(false); setFullscreen(false); }} />}
 
-      {/* Ventana de chat */}
       <Animated.View style={[
         styles.chatBase,
         { opacity: fadeAnim, bottom: chatBottom, top: chatTop, height: chatHeight,
           left: chatLeft, right: chatRight, borderRadius: chatRadius },
         !open && styles.hidden,
       ]}>
-        {/* Header */}
         <View style={styles.header}>
           <View style={styles.headerLeft}>
             <View style={styles.avatar}>
@@ -140,7 +137,6 @@ export function FloatingBot() {
           </View>
         </View>
 
-        {/* Mensajes */}
         <FlatList
           ref={listRef}
           data={messages}
@@ -164,7 +160,6 @@ export function FloatingBot() {
           }}
         />
 
-        {/* Input */}
         <View style={[styles.inputRow, { paddingBottom: kbH > 0 ? 8 : 12 }]}>
           <TextInput
             style={styles.input}
@@ -186,7 +181,6 @@ export function FloatingBot() {
         </View>
       </Animated.View>
 
-      {/* FAB */}
       <View style={styles.fabWrap}>
         <Animated.View style={{ transform: [{ scale: open ? 1 : pulseAnim }] }}>
           <TouchableOpacity
@@ -211,21 +205,13 @@ export function FloatingBot() {
 const styles = StyleSheet.create({
   overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.35)", zIndex: 98 },
   hidden:  { pointerEvents: "none" as any },
-
   chatBase: {
-    position: "absolute",
-    backgroundColor: colors.bg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    zIndex: 99,
-    overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.5,
-    shadowRadius: 20,
-    elevation: 20,
+    position: "absolute", backgroundColor: colors.bg,
+    borderWidth: 1, borderColor: colors.border,
+    zIndex: 99, overflow: "hidden",
+    shadowColor: "#000", shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.5, shadowRadius: 20, elevation: 20,
   },
-
   header: {
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
     paddingHorizontal: 14, paddingVertical: 12,
@@ -243,8 +229,7 @@ const styles = StyleSheet.create({
   onlineRow: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 1 },
   onlineDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.success },
   onlineTxt: { color: colors.textMuted, fontSize: 10 },
-
-  msgList: { padding: 12, gap: 10 },
+  msgList:    { padding: 12, gap: 10 },
   msgRow:     { flexDirection: "row", alignItems: "flex-end", gap: 6 },
   msgRowUser: { flexDirection: "row-reverse" },
   botDot: {
@@ -255,7 +240,6 @@ const styles = StyleSheet.create({
   bubbleBot:  { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderBottomLeftRadius: 4 },
   bubbleUser: { backgroundColor: colors.brand, borderBottomRightRadius: 4 },
   bubbleTxt:  { color: colors.text, fontSize: 14, lineHeight: 20 },
-
   inputRow: {
     flexDirection: "row", alignItems: "center", gap: 8,
     paddingHorizontal: 12, paddingTop: 10,
@@ -272,7 +256,6 @@ const styles = StyleSheet.create({
     width: 40, height: 40, borderRadius: 20,
     backgroundColor: colors.brand, alignItems: "center", justifyContent: "center",
   },
-
   fabWrap: {
     position: "absolute", bottom: 28, right: 16,
     alignItems: "center", gap: 5, zIndex: 100,

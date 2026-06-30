@@ -11,11 +11,26 @@ interface Operator {
 }
 
 const ZONES = [
-  { value:"centro",      label:"Centro" },
-  { value:"zapallal",    label:"Zapallal / Norte" },
-  { value:"la_ensenada", label:"La Ensenada / Sur" },
-  { value:"huamantanga", label:"Huamantanga" },
-  { value:"otros",       label:"Otros" },
+  // ZONA SUR
+  { value:"ensenada",         label:"La Ensenada (SUR)" },
+  { value:"laderas",          label:"Laderas (SUR)" },
+  { value:"chillon",          label:"Chillón (SUR)" },
+  { value:"shangrila",        label:"Shangri-La (SUR)" },
+  // ZONA CENTRO
+  { value:"tambo_inga_oeste", label:"Tambo Inga Oeste (CENTRO)" },
+  { value:"tambo_inga_este",  label:"Tambo Inga Este (CENTRO)" },
+  { value:"pampa_libre",      label:"Pampa Libre (CENTRO)" },
+  { value:"gallinazos",       label:"Gallinazos (CENTRO)" },
+  { value:"santa_rosa",       label:"Santa Rosa (CENTRO)" },
+  { value:"cercado",          label:"Cercado (CENTRO)" },
+  { value:"las_vegas",        label:"Las Vegas (CENTRO)" },
+  { value:"la_grama",         label:"La Grama (CENTRO)" },
+  { value:"copacabana",       label:"Copacabana (CENTRO)" },
+  // ZONA NORTE
+  { value:"el_dorado",        label:"El Dorado (NORTE)" },
+  { value:"leoncio_prado",    label:"Leoncio Prado (NORTE)" },
+  { value:"jerusalem",        label:"Jerusalén (NORTE)" },
+  { value:"lomas",            label:"Lomas (NORTE)" },
 ];
 
 const SUB_ROLES = [

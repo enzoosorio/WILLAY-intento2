@@ -11,6 +11,8 @@ const NAV = [
   { path:"/chat",      label:"Chat",       icon:"💬", desc:"Comunicación interna" },
   { path:"/history",   label:"Historial",  icon:"📜", desc:"Log de acciones" },
   { path:"/missing",   label:"Desaparecidos",icon:"🔍", desc:"Búsqueda facial" },
+  { path:"/reinforcements", label:"Refuerzos", icon:"🚨", desc:"Solicitudes de campo" },
+  { path:"/risk-prediction", label:"Predicción IA", icon:"🧠", desc:"Zonas de riesgo" },
 ];
 
 export default function Layout({ children }: { children: ReactNode }) {

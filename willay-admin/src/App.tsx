@@ -12,6 +12,8 @@ import MapView from "./pages/MapView";
 import Chat from "./pages/Chat";
 import History from "./pages/History";
 import MissingPersons from "./pages/MissingPersons";
+import Reinforcements from "./pages/Reinforcements";
+import RiskPrediction from "./pages/RiskPrediction";
 import Layout from "./components/Layout";
 
 export default function App() {
@@ -51,6 +53,8 @@ export default function App() {
           <Route path="/chat"      element={<Chat />} />
           <Route path="/history"   element={<History />} />
           <Route path="/missing"   element={<MissingPersons />} />
+          <Route path="/reinforcements" element={<Reinforcements />} />
+          <Route path="/risk-prediction" element={<RiskPrediction />} />
           <Route path="*"          element={<Navigate to="/" />} />
         </Routes>
       </Layout>
